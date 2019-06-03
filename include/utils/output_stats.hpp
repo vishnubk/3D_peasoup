@@ -307,3 +307,92 @@ public:
   }
 };
 
+
+class CandidateFileWriter_template_bank {
+public:
+  std::map<int,std::string> filenames;
+  std::map<unsigned,long int> byte_mapping;
+  std::string output_dir;
+ 
+  CandidateFileWriter_template_bank(std::string output_directory)
+    :output_dir(output_directory)
+  {
+    struct stat st = {0};
+    if (stat(output_dir.c_str(), &st) == -1) {
+      if (mkdir(output_dir.c_str(), 0777) != 0)
+	perror(output_dir.c_str());	
+    }
+  }
+
+  void write_binary(std::vector<Candidate_template_bank>& candidates,
+		    std::string filename)
+  {
+    char actualpath [PATH_MAX];
+    std::stringstream filepath;
+    filepath << output_dir << "/" << filename;
+    realpath(filepath.str().c_str(), actualpath);
+    
+    FILE* fo = fopen(actualpath,"w");
+    if (fo == NULL) {
+      perror(filepath.str().c_str());
+      return;
+    }
+    
+    for (int ii=0;ii<candidates.size();ii++)
+      {
+	byte_mapping[ii] = ftell(fo);
+	if (candidates[ii].fold.size()>0)
+	  {
+	    size_t size = candidates[ii].nbins * candidates[ii].nints;
+	    float* fold = &candidates[ii].fold[0];
+	    fprintf(fo,"FOLD");
+	    fwrite(&candidates[ii].nbins,sizeof(int),1,fo);
+	    fwrite(&candidates[ii].nints,sizeof(int),1,fo);
+	    fwrite(fold,sizeof(float),size,fo);
+	  }
+	std::vector<CandidatePOD_template_bank> detections;
+	candidates[ii].collect_candidates(detections);
+	int ndets = detections.size();
+	fwrite(&ndets,sizeof(int),1,fo);
+	fwrite(&detections[0],sizeof(CandidatePOD_template_bank),ndets,fo);
+      }
+    fclose(fo);
+  }
+  
+  void write_binaries(std::vector<Candidate_template_bank>& candidates)
+  {
+    char actualpath [PATH_MAX];
+    char filename[1024];
+    std::stringstream filepath;
+    for (int ii=0;ii<candidates.size();ii++){
+      filepath.str("");
+      sprintf(filename,"cand_%04d_%.5f_%.1f_%.1f.peasoup",
+              ii,1.0/candidates[ii].freq,candidates[ii].dm,candidates[ii].omega,candidates[ii].tau,candidates[ii].phi);
+      filepath << output_dir << "/" << filename;
+
+      char* ptr = realpath(filepath.str().c_str(), actualpath);
+      filenames[ii] = std::string(actualpath);
+      
+      FILE* fo = fopen(filepath.str().c_str(),"w");
+      if (fo == NULL) {
+	perror(filepath.str().c_str());
+	return;
+      }
+      
+      if (candidates[ii].fold.size()>0){
+	size_t size = candidates[ii].nbins * candidates[ii].nints;
+	float* fold = &candidates[ii].fold[0];
+	fprintf(fo,"FOLD");
+	fwrite(&candidates[ii].nbins,sizeof(int),1,fo);
+	fwrite(&candidates[ii].nints,sizeof(int),1,fo);
+	fwrite(fold,sizeof(float),size,fo);
+      }
+      std::vector<CandidatePOD_template_bank> detections;
+      candidates[ii].collect_candidates(detections);
+      int ndets = detections.size();
+      fwrite(&ndets,sizeof(int),1,fo);
+      fwrite(&detections[0],sizeof(CandidatePOD_template_bank),ndets,fo);
+      fclose(fo);
+    }
+  }
+};

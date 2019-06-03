@@ -92,7 +92,7 @@ private:
   std::map<std::string,Stopwatch> timers;
   
 public:
-  CandidateCollection dm_trial_cands;
+  CandidateCollection_template_bank dm_trial_cands;
 
   Worker(DispersionTrials<unsigned char>& trials, DMDispenser& manager, 
 	 AccelerationPlan& acc_plan, CmdLineOptions& args, unsigned int size, int device)
@@ -146,10 +146,12 @@ public:
     Dereddener rednoise(size/2+1);
     SpectrumFormer former;
     PeakFinder cand_finder(args.min_snr,args.min_freq,args.max_freq,size);
+    PeakFinder_template_bank cand_finder_template_bank(args.min_snr,args.min_freq,args.max_freq,size);
     HarmonicSums<float> sums(pspec,args.nharmonics);
     HarmonicFolder harm_folder(sums);
     std::vector<float> acc_list;
     HarmonicDistiller harm_finder(args.freq_tol,args.max_harm,false);
+    HarmonicDistiller_template_bank harm_finder_template_bank(args.freq_tol,args.max_harm,false);
     AccelerationDistiller acc_still(tobs,args.freq_tol,true);
     float mean,std,rms;
     float padding_mean;
@@ -230,7 +232,7 @@ public:
       std::cout << "Templates to "<< angular_velocity[0] << " " << angular_velocity[1] << " " << tau[0] << " "  << tau[1] << " " << phi[0] << " " << phi[1] << " blah blah" << std::endl;
       //std::cout << "Templates to "<< angular_velocity[0] << " blah blah" << std::endl;
       // Template-Bank Loop
-      //CandidateCollection template_trial_cands;
+      CandidateCollection_template_bank current_template_trial_cands;
       
       for (int jj=0;jj<tau.size();jj++){
             //if (args.verbose)
@@ -268,18 +270,23 @@ public:
               std::cout << "Harmonic summing" << std::endl;
             harm_folder.fold(pspec);
 
-            //if (args.verbose)
-            //  std::cout << "Finding peaks" << std::endl;
-            //SpectrumCandidates trial_cands(tim.get_dm(),ii,acc_list[jj]);
-            //cand_finder.find_candidates(pspec,trial_cands);
-            //cand_finder.find_candidates(sums,trial_cands);
+            if (args.verbose)
+              std::cout << "Finding peaks" << std::endl;
+            SpectrumCandidates_templatebank template_bank_trial_cands(tim.get_dm(),ii,angular_velocity[jj],tau[jj],phi[jj]);
+            cand_finder_template_bank.find_candidates(pspec,template_bank_trial_cands);
+            cand_finder_template_bank.find_candidates(sums,template_bank_trial_cands);
 
-            //if (args.verbose)
-            //  std::cout << "Distilling harmonics" << std::endl;
-            //  accel_trial_cands.append(harm_finder.distill(trial_cands.cands));
+            if (args.verbose)
+              std::cout << "Distilling harmonics" << std::endl;
+              current_template_trial_cands.append(harm_finder_template_bank.distill(template_bank_trial_cands.cands));
       }
 
+             if (args.verbose)
+             std::cout << "Distilling template-bank trials" << std::endl;
+            dm_trial_cands.append(current_template_trial_cands.cands);
+           //dm_trial_cands.append(acc_still.distill(accel_trial_cands.cands));
 
+      }
 
 
       //float* test_block0;
@@ -299,46 +306,46 @@ public:
       //Utils::host_free(test_block1);
 
       //std::cout << "Timeseries after resampling"<< d_tim_r[22] << std::endl;
-      CandidateCollection accel_trial_cands;    
-      PUSH_NVTX_RANGE("Acceleration-Loop",1)
+      //CandidateCollection accel_trial_cands;    
+      //PUSH_NVTX_RANGE("Acceleration-Loop",1)
 
-      for (int jj=0;jj<acc_list.size();jj++){
-	    if (args.verbose)
-	      std::cout << "Resampling to "<< acc_list[jj] << " m/s/s" << std::endl;
-	    resampler.resampleII(d_tim,d_tim_r,size,acc_list[jj]);
+      //for (int jj=0;jj<acc_list.size();jj++){
+      //      if (args.verbose)
+      //        std::cout << "Resampling to "<< acc_list[jj] << " m/s/s" << std::endl;
+      //      resampler.resampleII(d_tim,d_tim_r,size,acc_list[jj]);
 
-	    if (args.verbose)
-	      std::cout << "Execute forward FFT" << std::endl;
-	    r2cfft.execute(d_tim_r.get_data(),d_fseries.get_data());
+      //      if (args.verbose)
+      //        std::cout << "Execute forward FFT" << std::endl;
+      //      r2cfft.execute(d_tim_r.get_data(),d_fseries.get_data());
 
-	    if (args.verbose)
-	      std::cout << "Form interpolated power spectrum" << std::endl;
-	    former.form_interpolated(d_fseries,pspec);
+      //      if (args.verbose)
+      //        std::cout << "Form interpolated power spectrum" << std::endl;
+      //      former.form_interpolated(d_fseries,pspec);
 
-	    if (args.verbose)
-	      std::cout << "Normalise power spectrum" << std::endl;
-	    stats::normalise(pspec.get_data(),mean*size,std*size,size/2+1);
+      //      if (args.verbose)
+      //        std::cout << "Normalise power spectrum" << std::endl;
+      //      stats::normalise(pspec.get_data(),mean*size,std*size,size/2+1);
 
-	    if (args.verbose)
-	      std::cout << "Harmonic summing" << std::endl;
-	    harm_folder.fold(pspec);
-		
-	    if (args.verbose)
-	      std::cout << "Finding peaks" << std::endl;
-	    SpectrumCandidates trial_cands(tim.get_dm(),ii,acc_list[jj]);
-	    cand_finder.find_candidates(pspec,trial_cands);
-	    cand_finder.find_candidates(sums,trial_cands);
-	
-	    if (args.verbose)
-	      std::cout << "Distilling harmonics" << std::endl;
-	      accel_trial_cands.append(harm_finder.distill(trial_cands.cands));
-      }
-	  POP_NVTX_RANGE
-      if (args.verbose)
-	    std::cout << "Distilling accelerations" << std::endl;
-      dm_trial_cands.append(acc_still.distill(accel_trial_cands.cands));
-    }
-	POP_NVTX_RANGE
+      //      if (args.verbose)
+      //        std::cout << "Harmonic summing" << std::endl;
+      //      harm_folder.fold(pspec);
+      //  	
+      //      if (args.verbose)
+      //        std::cout << "Finding peaks" << std::endl;
+      //      SpectrumCandidates trial_cands(tim.get_dm(),ii,acc_list[jj]);
+      //      cand_finder.find_candidates(pspec,trial_cands);
+      //      cand_finder.find_candidates(sums,trial_cands);
+      //  
+      //      if (args.verbose)
+      //        std::cout << "Distilling harmonics" << std::endl;
+      //        accel_trial_cands.append(harm_finder.distill(trial_cands.cands));
+      //}
+      //    POP_NVTX_RANGE
+      //if (args.verbose)
+      //      std::cout << "Distilling accelerations" << std::endl;
+      //dm_trial_cands.append(acc_still.distill(accel_trial_cands.cands));
+   // }
+     //	POP_NVTX_RANGE
 	
     if (args.zapfilename!="")
       delete bzap;
@@ -454,9 +461,9 @@ int main(int argc, char **argv)
     pthread_create(&threads[ii], NULL, launch_worker_thread, (void*) workers[ii]);
   }
   
-  DMDistiller dm_still(args.freq_tol,true);
-  HarmonicDistiller harm_still(args.freq_tol,args.max_harm,true,false);
-  CandidateCollection dm_cands;
+  DMDistiller_template_bank dm_still(args.freq_tol,true);
+  HarmonicDistiller_template_bank harm_still(args.freq_tol,args.max_harm,true,false);
+  CandidateCollection_template_bank dm_cands;
   for (int ii=0; ii<nthreads; ii++){
     pthread_join(threads[ii],NULL);
     dm_cands.append(workers[ii]->dm_trial_cands.cands);
@@ -468,59 +475,60 @@ int main(int argc, char **argv)
   dm_cands.cands = dm_still.distill(dm_cands.cands);
   dm_cands.cands = harm_still.distill(dm_cands.cands);
   
-  CandidateScorer cand_scorer(filobj.get_tsamp(),filobj.get_cfreq(), filobj.get_foff(),
-        		      fabs(filobj.get_foff())*filobj.get_nchans());
-  cand_scorer.score_all(dm_cands.cands);
+  //CandidateScorer cand_scorer(filobj.get_tsamp(),filobj.get_cfreq(), filobj.get_foff(),
+  //      		      fabs(filobj.get_foff())*filobj.get_nchans());
+  //cand_scorer.score_all(dm_cands.cands);
 
-  if (args.verbose)
-    std::cout << "Setting up time series folder" << std::endl;
-  
-  MultiFolder folder(dm_cands.cands,trials);
-  timers["folding"].start();
-  if (args.progress_bar)
-    folder.enable_progress_bar();
+  // The lines below were commented out as we do not do folding in peasoup.
 
-  if (args.npdmp > 0){
-    if (args.verbose)
-      std::cout << "Folding top "<< args.npdmp <<" cands" << std::endl;
-    folder.fold_n(args.npdmp);
-  }
-  timers["folding"].stop();
+  //if (args.verbose)
+  //  std::cout << "Setting up time series folder" << std::endl;
+  //
+  //MultiFolder folder(dm_cands.cands,trials);
+  //timers["folding"].start();
+  //if (args.progress_bar)
+  //  folder.enable_progress_bar();
+
+  //if (args.npdmp > 0){
+  //  if (args.verbose)
+  //    std::cout << "Folding top "<< args.npdmp <<" cands" << std::endl;
+  //  folder.fold_n(args.npdmp);
+  //}
+  //timers["folding"].stop();
 
   if (args.verbose)
     std::cout << "Writing output files" << std::endl;
-  //dm_cands.write_candidate_file("./old_cands.txt");
   
   int new_size = std::min(args.limit,(int) dm_cands.cands.size());
   dm_cands.cands.resize(new_size);
 
-  CandidateFileWriter cand_files(args.outdir);
-  cand_files.write_binary(dm_cands.cands,"candidates.peasoup");
-  
-  OutputFileWriter stats;
-  stats.add_misc_info();
-  stats.add_header(filename);
-  stats.add_search_parameters(args);
-  stats.add_dm_list(dm_list);
-  
-  std::vector<float> acc_list;
-  //std::vector<float> angular_velocity;
-  //std::vector<float> tau;
-  //std::vector<float> phi;
-  acc_plan.generate_accel_list(0.0,acc_list);
-  stats.add_acc_list(acc_list);
-  
-  std::vector<int> device_idxs;
-  for (int device_idx=0;device_idx<nthreads;device_idx++)
-    device_idxs.push_back(device_idx);
-  stats.add_gpu_info(device_idxs);
-  stats.add_candidates(dm_cands.cands,cand_files.byte_mapping);
-  timers["total"].stop();
-  stats.add_timing_info(timers);
-  
-  std::stringstream xml_filepath;
-  xml_filepath << args.outdir << "/" << "overview.xml";
-  stats.to_file(xml_filepath.str());
+  CandidateFileWriter_template_bank cand_files(args.outdir);
+  cand_files.write_binary(dm_cands.cands,"candidates_template_bank.peasoup");
+  //
+  //OutputFileWriter stats;
+  //stats.add_misc_info();
+  //stats.add_header(filename);
+  //stats.add_search_parameters(args);
+  //stats.add_dm_list(dm_list);
+  //
+  //std::vector<float> acc_list;
+  ////std::vector<float> angular_velocity;
+  ////std::vector<float> tau;
+  ////std::vector<float> phi;
+  //acc_plan.generate_accel_list(0.0,acc_list);
+  //stats.add_acc_list(acc_list);
+  //
+  //std::vector<int> device_idxs;
+  //for (int device_idx=0;device_idx<nthreads;device_idx++)
+  //  device_idxs.push_back(device_idx);
+  //stats.add_gpu_info(device_idxs);
+  //stats.add_candidates(dm_cands.cands,cand_files.byte_mapping);
+  //timers["total"].stop();
+  //stats.add_timing_info(timers);
+  //
+  //std::stringstream xml_filepath;
+  //xml_filepath << args.outdir << "/" << "overview.xml";
+  //stats.to_file(xml_filepath.str());
   
   return 0;
 }

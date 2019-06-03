@@ -13,6 +13,12 @@ struct snr_less_than {
   }
 };
 
+struct snr_less_than_template_bank {
+  bool operator()(const Candidate_template_bank& x, const Candidate_template_bank& y){
+    return (x.snr>y.snr);
+  }
+};
+
 class BaseDistiller {
 protected:
   std::vector<bool> unique;
@@ -59,6 +65,52 @@ public:
   }
 };
 
+
+class BaseDistiller_template_bank {
+protected:
+  std::vector<bool> unique;
+  int size;
+  bool keep_related;
+  virtual void condition(std::vector<Candidate_template_bank>& cands, int idx){}
+  BaseDistiller_template_bank(bool keep_related)
+    :keep_related(keep_related){}
+
+public:      
+  std::vector<Candidate_template_bank> distill(std::vector<Candidate_template_bank>& cands)
+  {
+    size = cands.size();
+    unique.resize(size);
+    std::fill(unique.begin(),unique.end(),true);
+    std::sort(cands.begin(),cands.end(),snr_less_than_template_bank()); //Sort by snr !IMPORTANT       
+    int ii;
+    int idx;
+    int start=0;
+    int count=0;
+    while (true) {
+      idx = -1; //Sentinel value                                                    
+      for(ii=start;ii<size;ii++){
+        if (unique[ii]){
+          start = ii+1;
+          idx = ii;
+          break;
+        }
+      }
+      if (idx==-1)
+        break;
+      else{
+	count++;
+	condition(cands,idx);
+      }
+    }
+    std::vector<Candidate_template_bank> new_cands;
+    new_cands.reserve(count);
+    for (ii=0;ii<size;ii++){
+      if (unique[ii])
+        new_cands.push_back(cands[ii]);
+    }
+    return new_cands;
+  }
+};
 
 class HarmonicDistiller: public BaseDistiller {
 private:
@@ -108,6 +160,52 @@ public:
 };
 
 
+class HarmonicDistiller_template_bank: public BaseDistiller_template_bank {
+private:
+  float tolerance;
+  float max_harm;
+  bool fractional_harms;
+
+  void condition(std::vector<Candidate_template_bank>& cands, int idx)
+  {
+    int ii,jj,kk;
+    double ratio,freq;
+    int nh;
+    double upper_tol = 1+tolerance;
+    double lower_tol = 1-tolerance;
+    double fundi_freq = cands[idx].freq;
+    float max_denominator;
+    for (ii=idx+1;ii<size;ii++){
+      freq = cands[ii].freq;
+      nh = cands[ii].nh;
+      
+      /*
+      if (cands[ii].nh > cands[idx].nh){
+        continue;
+	}
+      */
+
+      if (fractional_harms)
+	max_denominator = pow(2.0,nh);
+      else
+	max_denominator = 1;
+      for (jj=1;jj<=this->max_harm;jj++){
+        for (kk=1;kk<=max_denominator;kk++){
+          ratio = kk*freq/(jj*fundi_freq);
+          if (ratio>(lower_tol)&&ratio<(upper_tol)){
+	    if (keep_related)
+	      cands[idx].append(cands[ii]);
+            unique[ii]=false;
+          }
+	}
+      }
+    }
+  }
+  
+public:
+  HarmonicDistiller_template_bank(float tol, float max_harm, bool keep_related, bool fractional_harms=true)
+    :BaseDistiller_template_bank(keep_related),tolerance(tol),max_harm(max_harm),fractional_harms(fractional_harms){}
+};
 //Remove other candidates with lower S/N and equal or lower harmonic number
 //Use a user defined period tolerance, but calculate the delta f for the 
 //delta acc between fundamental and test signal.
@@ -194,6 +292,38 @@ private:
 public:
   DMDistiller(float tolerance, bool keep_related)
     :BaseDistiller(keep_related),tolerance(tolerance){}
+};
+
+
+class DMDistiller_template_bank: public BaseDistiller_template_bank {
+private:
+  float tolerance;
+  double ratio;
+
+  void condition(std::vector<Candidate_template_bank>& cands,int idx)
+  {
+    int ii;
+    double fundi_freq = cands[idx].freq;
+    double upper_tol = 1+tolerance;
+    double lower_tol = 1-tolerance;
+    for (ii=idx+1;ii<size;ii++){
+      /*
+      if (cands[ii].nh > cands[idx].nh){
+        continue;
+	}*/
+      
+      ratio = cands[ii].freq/fundi_freq;
+      if (ratio>(lower_tol)&&ratio<(upper_tol)){
+	if (keep_related)
+	  cands[idx].append(cands[ii]);
+	unique[ii]=false;
+      }
+    }
+  }
+  
+public:
+  DMDistiller_template_bank(float tolerance, bool keep_related)
+    :BaseDistiller_template_bank(keep_related),tolerance(tolerance){}
 };
 
 class CandidateTester {
