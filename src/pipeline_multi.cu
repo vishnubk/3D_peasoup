@@ -7,6 +7,7 @@
 #include <transforms/folder.hpp>
 #include <transforms/ffter.hpp>
 #include <transforms/dereddener.hpp>
+#include <transforms/template_bank.hpp>
 #include <transforms/spectrumformer.hpp>
 #include <transforms/birdiezapper.hpp>
 #include <transforms/peakfinder.hpp>
@@ -121,14 +122,27 @@ public:
     DedispersedTimeSeries<unsigned char> tim;
     ReusableDeviceTimeSeries<float,unsigned char> d_tim(size);
     DeviceTimeSeries<float> d_tim_r(size);
+    DeviceTimeSeries<float> d_tim_resampled(size);
+    Template_Bank* templates;
     TimeDomainResampler resampler;
     DevicePowerSpectrum<float> pspec(d_fseries);
+    //std::vector<float> angular_velocity;
+    //std::vector<float> tau;
+    //std::vector<float> phi;
     Zapper* bzap;
     if (args.zapfilename!=""){
       if (args.verbose)
 	std::cout << "Using zapfile: " << args.zapfilename << std::endl;
       bzap = new Zapper(args.zapfilename);
     }
+    
+    if (args.templatefilename!=""){
+      if (args.verbose)
+        std::cout << "Using template bank file: " << args.templatefilename << std::endl;
+        //Template_Bank templates(args.templatefilename);
+        templates = new Template_Bank(args.templatefilename);
+    }
+   
     Dereddener rednoise(size/2+1);
     SpectrumFormer former;
     PeakFinder cand_finder(args.min_snr,args.min_freq,args.max_freq,size);
@@ -203,6 +217,88 @@ public:
 	    std::cout << "Executing inverse FFT" << std::endl;
       c2rfft.execute(d_fseries.get_data(),d_tim.get_data());
 
+     }
+
+      if (args.templatefilename!=""){
+            if (args.verbose)
+              std::cout << "Reading template bank file"  << args.templatefilename << std::endl;
+              std::vector<float> angular_velocity = templates->get_angular_velocity();
+              std::vector<float> tau = templates->get_tau();
+              std::vector<float> phi = templates->get_phi();
+      
+
+      std::cout << "Templates to "<< angular_velocity[0] << " " << angular_velocity[1] << " " << tau[0] << " "  << tau[1] << " " << phi[0] << " " << phi[1] << " blah blah" << std::endl;
+      //std::cout << "Templates to "<< angular_velocity[0] << " blah blah" << std::endl;
+      // Template-Bank Loop
+      //CandidateCollection template_trial_cands;
+      
+      for (int jj=0;jj<tau.size();jj++){
+            //if (args.verbose)
+             unsigned int new_length = size - 1;
+             if (args.verbose)
+
+             std::cout << "Resampling to "<< angular_velocity[jj] <<  " " << tau[jj] << " " << phi[jj] << std::endl;
+
+             resampler.binary_timeseries_offset(d_tim,d_tim_r,size,angular_velocity[jj],tau[jj],phi[jj]);
+
+             resampler.binary_modulate_time_series_length(d_tim_r, size, new_length);
+
+             resampler.binary_resample_circular_binary(d_tim,d_tim_resampled, d_tim_r, new_length);
+             
+             if (new_length < size)
+              if (args.verbose)
+               std::cout << "Mean padding "<< size-new_length << " samples since resampled time series is different from observed" << std::endl;
+             
+              padding_mean = stats::mean<float>(d_tim_resampled.get_data(),new_length);
+              d_tim_resampled.fill(new_length,size,padding_mean); 
+
+             if (args.verbose)
+              std::cout << "Execute forward FFT" << std::endl;
+            r2cfft.execute(d_tim_resampled.get_data(),d_fseries.get_data());
+
+            if (args.verbose)
+              std::cout << "Form interpolated power spectrum" << std::endl;
+            former.form_interpolated(d_fseries,pspec);
+
+            if (args.verbose)
+              std::cout << "Normalise power spectrum" << std::endl;
+            stats::normalise(pspec.get_data(),mean*size,std*size,size/2+1);
+
+            if (args.verbose)
+              std::cout << "Harmonic summing" << std::endl;
+            harm_folder.fold(pspec);
+
+            //if (args.verbose)
+            //  std::cout << "Finding peaks" << std::endl;
+            //SpectrumCandidates trial_cands(tim.get_dm(),ii,acc_list[jj]);
+            //cand_finder.find_candidates(pspec,trial_cands);
+            //cand_finder.find_candidates(sums,trial_cands);
+
+            //if (args.verbose)
+            //  std::cout << "Distilling harmonics" << std::endl;
+            //  accel_trial_cands.append(harm_finder.distill(trial_cands.cands));
+      }
+
+
+
+
+      //float* test_block0;
+      //Utils::host_malloc<float>(&test_block0,size);
+
+      //float* test_block1;
+      //Utils::host_malloc<float>(&test_block1,size);
+
+      //Utils::d2hcpy(test_block0,d_tim.get_data(),size);
+      //Utils::d2hcpy(test_block1,d_tim_r.get_data(),size);
+
+      //for (int ii=0;ii<10;ii++){
+      //   printf("%f != %f\n",test_block0[ii],test_block1[ii]);
+      //}
+
+      //Utils::host_free(test_block0);
+      //Utils::host_free(test_block1);
+
+      //std::cout << "Timeseries after resampling"<< d_tim_r[22] << std::endl;
       CandidateCollection accel_trial_cands;    
       PUSH_NVTX_RANGE("Acceleration-Loop",1)
 
@@ -246,7 +342,10 @@ public:
 	
     if (args.zapfilename!="")
       delete bzap;
-    
+   
+    if (args.templatefilename!="")
+      delete templates;
+ 
     if (args.verbose)
       std::cout << "DM processing took " << pass_timer.getTime() << " seconds"<< std::endl;
   }
@@ -334,6 +433,9 @@ int main(int argc, char **argv)
   if (args.verbose)
     std::cout << "Setting transform length to " << size << " points" << std::endl;
   
+
+  std::cout << "Tsamp is"<< filobj.get_tsamp() << std::endl;
+  
   AccelerationPlan acc_plan(args.acc_start, args.acc_end, args.acc_tol,
         		    args.acc_pulse_width, size, filobj.get_tsamp(),
         		    filobj.get_cfreq(), filobj.get_foff()); 
@@ -402,6 +504,9 @@ int main(int argc, char **argv)
   stats.add_dm_list(dm_list);
   
   std::vector<float> acc_list;
+  //std::vector<float> angular_velocity;
+  //std::vector<float> tau;
+  //std::vector<float> phi;
   acc_plan.generate_accel_list(0.0,acc_list);
   stats.add_acc_list(acc_list);
   

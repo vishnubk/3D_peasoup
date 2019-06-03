@@ -8,6 +8,7 @@ struct CmdLineOptions {
   std::string outdir;
   std::string killfilename;
   std::string zapfilename;
+  std::string templatefilename;
   int max_num_threads;
   unsigned int size;
   float dm_start;
@@ -36,6 +37,7 @@ struct FFACmdLineOptions {
   std::string infilename;
   std::string outfilename;
   std::string killfilename;
+  std::string templatefilename;
   int max_num_threads;
   unsigned int nstreams;
   float dm_start;
@@ -70,7 +72,7 @@ bool read_cmdline_options(CmdLineOptions& args, int argc, char **argv)
 {
   try
     {
-      TCLAP::CmdLine cmd("Peasoup - a GPU pulsar search pipeline", ' ', "1.0");
+      TCLAP::CmdLine cmd("3D Peasoup - a GPU pulsar search pipeline that can search coherently for circular binary orbits", ' ', "1.0");
 
       TCLAP::ValueArg<std::string> arg_infilename("i", "inputfile",
 						  "File to process (.fil)",
@@ -184,6 +186,7 @@ bool read_cmdline_options(CmdLineOptions& args, int argc, char **argv)
       args.outdir            = arg_outdir.getValue();
       args.killfilename      = arg_killfilename.getValue();
       args.zapfilename       = arg_zapfilename.getValue();
+      args.templatefilename  = arg_templatefilename.getValue();
       args.max_num_threads   = arg_max_num_threads.getValue();
       args.limit             = arg_limit.getValue();
       args.size              = arg_size.getValue();

@@ -354,10 +354,16 @@ __global__ void compute_resamp_offset_circular_binary_kernel(float* input_d,
 {
   for( unsigned long idx = blockIdx.x*blockDim.x + threadIdx.x ; idx < size ; idx += blockDim.x*gridDim.x )
   {
+    //printf("idx is %d \n", idx);
     float t = idx * tsamp;
+    //printf("t is %.4f \n", t);
     float x = omega * t + phi;
+    //printf("x is %.4f \n", x);
     float sinX = sin(x);
+    //printf("sinX is %.4f \n", sinX);
+    //printf("Before resampling array value is %.4f \n", resamp_offset_d[idx]);
     resamp_offset_d[idx] = tau * sinX * inverse_tsamp - zero_offset;
+    //printf("After resampling array value is %.4f \n", resamp_offset_d[idx]);
   }
 }
 
@@ -423,6 +429,9 @@ void device_timeseries_offset(float * d_idata, float * d_resamp_offset,
     blocks = max_blocks;
   compute_resamp_offset_circular_binary_kernel<<< blocks,max_threads >>>(d_idata, d_resamp_offset, 
                                                                          omega, tau, phi, zero_offset, inverse_tsamp, tsamp, (double) size);
+
+  //compute_resamp_offset_circular_binary_kernel<<< 1,1 >>>(d_idata, d_resamp_offset,
+  //                                                                       omega, tau, phi, zero_offset, inverse_tsamp, tsamp, (double) size);
   ErrorChecker::check_cuda_error("Error from device_timeseries_offset");
 }
 
