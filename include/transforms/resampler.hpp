@@ -33,9 +33,10 @@ public:
 
   void binary_timeseries_offset(DeviceTimeSeries<float>& input, DeviceTimeSeries<float>& output,
                      unsigned int size, double omega, double tau, double phi)
-  {
-    device_timeseries_offset(input.get_data(), output.get_data(), size,
-                    omega, tau, phi, 1/input.get_tsamp(), input.get_tsamp(), max_threads,  max_blocks);
+  { 
+    //double inverse_tsamp = 1/input.get_tsamp();
+    //printf("Inverse_tsamp: %.6f, tsamp: %.6f \n", inverse_tsamp, input.get_tsamp());
+    device_timeseries_offset(input.get_data(), output.get_data(), size, omega, tau, phi, 1/input.get_tsamp(), input.get_tsamp(), max_threads, max_blocks);
   }
 
   void binary_modulate_time_series_length(DeviceTimeSeries<float>& input, unsigned int  nsamples_unpadded, unsigned int new_length)

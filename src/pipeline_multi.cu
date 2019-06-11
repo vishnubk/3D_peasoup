@@ -244,7 +244,6 @@ public:
              resampler.binary_timeseries_offset(d_tim,d_tim_r,size,angular_velocity[jj],tau[jj],phi[jj]);
 
              resampler.binary_modulate_time_series_length(d_tim_r, size, new_length);
-
              resampler.binary_resample_circular_binary(d_tim,d_tim_resampled, d_tim_r, new_length);
              
              if (new_length < size)
@@ -266,12 +265,15 @@ public:
               std::cout << "Normalise power spectrum" << std::endl;
             stats::normalise(pspec.get_data(),mean*size,std*size,size/2+1);
 
+              std::cout << "Mean value of power-spectrum " << mean << std::endl;
+              std::cout << "std of power-spectrum " << std << std::endl;
             if (args.verbose)
               std::cout << "Harmonic summing" << std::endl;
             harm_folder.fold(pspec);
 
             if (args.verbose)
               std::cout << "Finding peaks" << std::endl;
+              std::cout << "DM index " << ii << std::endl;
             SpectrumCandidates_templatebank template_bank_trial_cands(tim.get_dm(),ii,angular_velocity[jj],tau[jj],phi[jj]);
             cand_finder_template_bank.find_candidates(pspec,template_bank_trial_cands);
             cand_finder_template_bank.find_candidates(sums,template_bank_trial_cands);
@@ -279,7 +281,7 @@ public:
             if (args.verbose)
               std::cout << "Distilling harmonics" << std::endl;
               current_template_trial_cands.append(harm_finder_template_bank.distill(template_bank_trial_cands.cands));
-      }
+    }
 
              if (args.verbose)
              std::cout << "Distilling template-bank trials" << std::endl;
@@ -505,30 +507,30 @@ int main(int argc, char **argv)
   CandidateFileWriter_template_bank cand_files(args.outdir);
   cand_files.write_binary(dm_cands.cands,"candidates_template_bank.peasoup");
   //
-  //OutputFileWriter stats;
-  //stats.add_misc_info();
-  //stats.add_header(filename);
-  //stats.add_search_parameters(args);
-  //stats.add_dm_list(dm_list);
-  //
+  OutputFileWriter_template_bank stats;
+  stats.add_misc_info();
+  stats.add_header(filename);
+  stats.add_search_parameters(args);
+  stats.add_dm_list(dm_list);
+  
   //std::vector<float> acc_list;
   ////std::vector<float> angular_velocity;
   ////std::vector<float> tau;
   ////std::vector<float> phi;
   //acc_plan.generate_accel_list(0.0,acc_list);
   //stats.add_acc_list(acc_list);
-  //
+  ////
   //std::vector<int> device_idxs;
   //for (int device_idx=0;device_idx<nthreads;device_idx++)
   //  device_idxs.push_back(device_idx);
   //stats.add_gpu_info(device_idxs);
-  //stats.add_candidates(dm_cands.cands,cand_files.byte_mapping);
-  //timers["total"].stop();
+  stats.add_candidates(dm_cands.cands,cand_files.byte_mapping);
+  timers["total"].stop();
   //stats.add_timing_info(timers);
   //
-  //std::stringstream xml_filepath;
-  //xml_filepath << args.outdir << "/" << "overview.xml";
-  //stats.to_file(xml_filepath.str());
+  std::stringstream xml_filepath;
+  xml_filepath << args.outdir << "/" << "overview.xml";
+  stats.to_file(xml_filepath.str());
   
-  return 0;
+  //return 0;
 }

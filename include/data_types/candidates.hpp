@@ -101,9 +101,9 @@ public:
 struct CandidatePOD_template_bank {
   float dm;
   int dm_idx;
-  double omega;
-  double tau;
-  double phi;
+  float omega;
+  float tau;
+  float phi;
   int nh;
   float snr;
   float freq;
@@ -113,9 +113,9 @@ struct Candidate_template_bank {
 public:
   float dm;
   int dm_idx;
-  double omega;
-  double tau;
-  double phi;
+  float omega;
+  float tau;
+  float phi;
   int nh;
   float snr;
   float freq;
@@ -143,13 +143,13 @@ public:
     return count;
   }
   
-  Candidate_template_bank(float dm, int dm_idx, double omega, double tau, double phi, int nh, float snr, float freq)
+  Candidate_template_bank(float dm, int dm_idx, float omega, float tau, float phi, int nh, float snr, float freq)
     :dm(dm),dm_idx(dm_idx),omega(omega),tau(tau),phi(phi),nh(nh),
      snr(snr),folded_snr(0.0),freq(freq),
      opt_period(0.0),is_adjacent(false),is_physical(false),
      ddm_count_ratio(0.0),ddm_snr_ratio(0.0),nints(0),nbins(0){}
   
-  Candidate_template_bank(float dm, int dm_idx, double omega, double tau, double phi, int nh, float snr, float folded_snr, float freq)
+  Candidate_template_bank(float dm, int dm_idx, float omega, float tau, float phi, int nh, float snr, float folded_snr, float freq)
     :dm(dm),dm_idx(dm_idx),omega(omega),tau(tau),phi(phi),nh(nh),snr(snr),
      folded_snr(folded_snr),freq(freq),opt_period(0.0),
      is_adjacent(false),is_physical(false),
@@ -319,11 +319,11 @@ class SpectrumCandidates_templatebank: public CandidateCollection_template_bank 
 public:
   float dm;
   int dm_idx;
-  double omega;
-  double tau;
-  double phi;
+  float omega;
+  float tau;
+  float phi;
 
-  SpectrumCandidates_templatebank(float dm, int dm_idx, double omega, double tau, double phi)
+  SpectrumCandidates_templatebank(float dm, int dm_idx, float omega, float tau, float phi)
     :dm(dm),dm_idx(dm_idx),omega(omega),tau(tau),phi(phi){}
 
   void append(float* snrs, float* freqs, int nh, int size){
