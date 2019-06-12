@@ -123,6 +123,7 @@ public:
     ReusableDeviceTimeSeries<float,unsigned char> d_tim(size);
     DeviceTimeSeries<float> d_tim_r(size);
     DeviceTimeSeries<float> d_tim_resampled(size);
+    //DeviceTimeSeries<int> d_new_length(1);
     Template_Bank* templates;
     TimeDomainResampler resampler;
     DevicePowerSpectrum<float> pspec(d_fseries);
@@ -229,29 +230,53 @@ public:
               std::vector<float> phi = templates->get_phi();
       
 
-      std::cout << "Templates to "<< angular_velocity[0] << " " << angular_velocity[1] << " " << tau[0] << " "  << tau[1] << " " << phi[0] << " " << phi[1] << " blah blah" << std::endl;
-      //std::cout << "Templates to "<< angular_velocity[0] << " blah blah" << std::endl;
       // Template-Bank Loop
       CandidateCollection_template_bank current_template_trial_cands;
       
       for (int jj=0;jj<tau.size();jj++){
-            //if (args.verbose)
-             unsigned int new_length = size - 1;
+
              if (args.verbose)
 
-             std::cout << "Resampling to "<< angular_velocity[jj] <<  " " << tau[jj] << " " << phi[jj] << std::endl;
+                 std::cout << "Resampling to "<< angular_velocity[jj] <<  " " << tau[jj] << " " << phi[jj] << std::endl;
 
              resampler.binary_timeseries_offset(d_tim,d_tim_r,size,angular_velocity[jj],tau[jj],phi[jj]);
+             std::cout << "Size is "<< size << std::endl;
 
-             resampler.binary_modulate_time_series_length(d_tim_r, size, new_length);
-             resampler.binary_resample_circular_binary(d_tim,d_tim_resampled, d_tim_r, new_length);
-             
-             if (new_length < size)
+            // Get modulated time-series length from kernel.
+             unsigned int h_new_length = size - 1;
+             unsigned int *d_new_length;
+             int size_new_length = sizeof(int);
+             cudaMalloc((void **)&d_new_length, size_new_length);
+             cudaMemcpy(d_new_length, &h_new_length, size_new_length, cudaMemcpyHostToDevice);
+
+             resampler.binary_modulate_time_series_length(d_tim_r, size, d_new_length);
+
+             cudaMemcpy(&h_new_length, d_new_length, size_new_length, cudaMemcpyDeviceToHost);
+             cudaFree(d_new_length);
+             std::cout << "New length is "<< h_new_length << std::endl;
+
+            // Time-Domain Resampling
+             resampler.binary_resample_circular_binary(d_tim,d_tim_resampled, d_tim_r, h_new_length);
+           
+
+ 
+             if (h_new_length < size)
               if (args.verbose)
-               std::cout << "Mean padding "<< size-new_length << " samples since resampled time series is different from observed" << std::endl;
+               std::cout << "Mean padding "<< size-h_new_length << " samples since resampled time series is different from observed" << std::endl;
              
-              padding_mean = stats::mean<float>(d_tim_resampled.get_data(),new_length);
-              d_tim_resampled.fill(new_length,size,padding_mean); 
+              padding_mean = stats::mean<float>(d_tim_resampled.get_data(),h_new_length);
+              d_tim_resampled.fill(h_new_length,size,padding_mean); 
+
+ //            float* test_block0;
+ //            Utils::host_malloc<float>(&test_block0,size);
+
+ //            Utils::d2hcpy(test_block0,d_tim_resampled.get_data(),size);
+
+ //            for (int ii=4194000;ii<size;ii++){
+ //            printf("%d %f \n",ii,test_block0[ii]);
+ // }
+
+//             Utils::host_free(test_block0);
 
              if (args.verbose)
               std::cout << "Execute forward FFT" << std::endl;
@@ -265,15 +290,12 @@ public:
               std::cout << "Normalise power spectrum" << std::endl;
             stats::normalise(pspec.get_data(),mean*size,std*size,size/2+1);
 
-              std::cout << "Mean value of power-spectrum " << mean << std::endl;
-              std::cout << "std of power-spectrum " << std << std::endl;
             if (args.verbose)
               std::cout << "Harmonic summing" << std::endl;
             harm_folder.fold(pspec);
 
             if (args.verbose)
               std::cout << "Finding peaks" << std::endl;
-              std::cout << "DM index " << ii << std::endl;
             SpectrumCandidates_templatebank template_bank_trial_cands(tim.get_dm(),ii,angular_velocity[jj],tau[jj],phi[jj]);
             cand_finder_template_bank.find_candidates(pspec,template_bank_trial_cands);
             cand_finder_template_bank.find_candidates(sums,template_bank_trial_cands);
@@ -284,70 +306,13 @@ public:
     }
 
              if (args.verbose)
-             std::cout << "Distilling template-bank trials" << std::endl;
+             std::cout << "Distilling template bank trials" << std::endl;
             dm_trial_cands.append(current_template_trial_cands.cands);
-           //dm_trial_cands.append(acc_still.distill(accel_trial_cands.cands));
+       //dm_trial_cands.append(acc_still.distill(accel_trial_cands.cands));
 
-      }
+    }
 
 
-      //float* test_block0;
-      //Utils::host_malloc<float>(&test_block0,size);
-
-      //float* test_block1;
-      //Utils::host_malloc<float>(&test_block1,size);
-
-      //Utils::d2hcpy(test_block0,d_tim.get_data(),size);
-      //Utils::d2hcpy(test_block1,d_tim_r.get_data(),size);
-
-      //for (int ii=0;ii<10;ii++){
-      //   printf("%f != %f\n",test_block0[ii],test_block1[ii]);
-      //}
-
-      //Utils::host_free(test_block0);
-      //Utils::host_free(test_block1);
-
-      //std::cout << "Timeseries after resampling"<< d_tim_r[22] << std::endl;
-      //CandidateCollection accel_trial_cands;    
-      //PUSH_NVTX_RANGE("Acceleration-Loop",1)
-
-      //for (int jj=0;jj<acc_list.size();jj++){
-      //      if (args.verbose)
-      //        std::cout << "Resampling to "<< acc_list[jj] << " m/s/s" << std::endl;
-      //      resampler.resampleII(d_tim,d_tim_r,size,acc_list[jj]);
-
-      //      if (args.verbose)
-      //        std::cout << "Execute forward FFT" << std::endl;
-      //      r2cfft.execute(d_tim_r.get_data(),d_fseries.get_data());
-
-      //      if (args.verbose)
-      //        std::cout << "Form interpolated power spectrum" << std::endl;
-      //      former.form_interpolated(d_fseries,pspec);
-
-      //      if (args.verbose)
-      //        std::cout << "Normalise power spectrum" << std::endl;
-      //      stats::normalise(pspec.get_data(),mean*size,std*size,size/2+1);
-
-      //      if (args.verbose)
-      //        std::cout << "Harmonic summing" << std::endl;
-      //      harm_folder.fold(pspec);
-      //  	
-      //      if (args.verbose)
-      //        std::cout << "Finding peaks" << std::endl;
-      //      SpectrumCandidates trial_cands(tim.get_dm(),ii,acc_list[jj]);
-      //      cand_finder.find_candidates(pspec,trial_cands);
-      //      cand_finder.find_candidates(sums,trial_cands);
-      //  
-      //      if (args.verbose)
-      //        std::cout << "Distilling harmonics" << std::endl;
-      //        accel_trial_cands.append(harm_finder.distill(trial_cands.cands));
-      //}
-      //    POP_NVTX_RANGE
-      //if (args.verbose)
-      //      std::cout << "Distilling accelerations" << std::endl;
-      //dm_trial_cands.append(acc_still.distill(accel_trial_cands.cands));
-   // }
-     //	POP_NVTX_RANGE
 	
     if (args.zapfilename!="")
       delete bzap;
@@ -383,9 +348,6 @@ int main(int argc, char **argv)
 
   int nthreads = std::min(Utils::gpu_count(),args.max_num_threads);
   nthreads = std::max(1,nthreads);
-  std::cout << "Max threads for this gpu is:" << args.max_num_threads << std::endl;
-  std::cout << "Max threads in nthreads variable is:" << nthreads << std::endl;
-  std::cout << "GPU count is:" << Utils::gpu_count() << std::endl;
   if (args.verbose)
     std::cout << "Using file: " << args.infilename << std::endl;
   std::string filename(args.infilename);

@@ -39,7 +39,7 @@ public:
     device_timeseries_offset(input.get_data(), output.get_data(), size, omega, tau, phi, 1/input.get_tsamp(), input.get_tsamp(), max_threads, max_blocks);
   }
 
-  void binary_modulate_time_series_length(DeviceTimeSeries<float>& input, unsigned int  nsamples_unpadded, unsigned int new_length)
+  void binary_modulate_time_series_length(DeviceTimeSeries<float>& input, unsigned int  nsamples_unpadded, unsigned int* new_length)
 
    {
     //unsigned new_length = nsamples_unpadded -1;

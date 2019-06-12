@@ -163,34 +163,19 @@ public:
   
   void find_candidates(DevicePowerSpectrum<float>& pspec, SpectrumCandidates_templatebank& cands){
     int size = pspec.get_nbins();
-    printf("size is: %d \n", size);
     float nyquist = pspec.get_bin_width()*size;
-    printf("nyquist is: %.6f \n", nyquist);
     int orig_size = 2.0*(size-1.0);
-    printf("orig_size is: %d \n", orig_size);
     int nh = pspec.get_nh();
-    printf("nh is: %d \n", nh);
     int max_bin = (int)((max_freq/pspec.get_bin_width())*pow(2.0,nh));
-    printf("max_bin is: %d \n", max_bin);
     int start_idx = (int)(orig_size*(min_freq/nyquist)*pow(2.0,nh));
-    printf("start_idx is: %d \n", start_idx);
-    printf("min is: %d \n", std::min(size,max_bin));
-    printf("threshold is: %.4f \n", threshold);
-    printf("pspec is: %.5f \n", pspec.get_data());
-    printf("idx0 pointer is: %d \n", &idxs[0]);
-    printf("snr0 pointer is: %.5f \n", &snrs[0]);
     int count = device_find_peaks(std::min(size,max_bin),
                                   start_idx, pspec.get_data(),
                                   threshold, &idxs[0], &snrs[0],
         			  d_idxs,d_snrs,allocator);
-    printf("count is: %d \n", count);
     int npeaks = identify_unique_peaks(count);
-    printf("npeaks is: %d \n", npeaks);
     float factor = 1.0/size*nyquist/pow(2.0,(float)nh);
-    printf("factor is: %.6f \n", factor);
     for (int ii=0;ii<npeaks;ii++){
       peakfreqs[ii] = peakidxs[ii]*factor;
-      printf("peakfreqs is: %.6f \n", peakfreqs[ii]);
       
     }
     cands.append(&peaksnrs[0],&peakfreqs[0],nh,npeaks);

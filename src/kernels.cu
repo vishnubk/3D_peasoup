@@ -356,7 +356,8 @@ __global__ void compute_resamp_offset_circular_binary_kernel(float* input_d,
   {
     //printf("idx is %d \n", idx);
     //printf("zero offset is: %.6f \n", zero_offset);
-    float t = idx * tsamp;
+    
+    float t = (idx + 1) * tsamp;
     //printf("t is %.4f \n", t);
     float x = omega * t + phi;
     //printf("x is %.4f \n", x);
@@ -371,15 +372,14 @@ __global__ void compute_resamp_offset_circular_binary_kernel(float* input_d,
 
 
 
-__global__ void compute_timeseries_length_circular_binary_kernel(float* d_resamp_offset, unsigned int nsamples_unpadded, size_t new_length)
-
+__global__ void compute_timeseries_length_circular_binary_kernel(float* d_resamp_offset, unsigned int nsamples_unpadded, unsigned int* new_length)
 {
-  
-  while(new_length - d_resamp_offset[new_length] >= nsamples_unpadded - 1) 
+  size_t n_steps = nsamples_unpadded - 1;
+  while(n_steps - d_resamp_offset[n_steps] >= nsamples_unpadded - 1) 
 { 
-        new_length--;
+        n_steps--;
 }
-
+  *new_length = n_steps;
 }
 
 
@@ -393,12 +393,14 @@ __global__ void resamp_circular_binary_kernel(float* input_d,
   {
     /* sample idx arrives at the detector at idx - resamp_offset_d[idx], choose nearest neighbor */
     //printf("PART2 idx is: %lu, After resampling array value is: %.4f \n", idx, resamp_offset_d[idx]);
-    unsigned long nearest_idx = (unsigned long)(idx - resamp_offset_d[idx] + 0.5f); 
+  //  printf("New length is %d \n", new_length);
+    unsigned long nearest_idx = (unsigned long)((idx + 1) - resamp_offset_d[idx] + 0.5f); 
     float test = idx - resamp_offset_d[idx]; 
     float resamp_value = resamp_offset_d[idx];
     //printf("idx is: %lu, nearest_idx is: %lu, test: %.4f, resamp_value: %.4f, input timeseries value: %.4f \n", idx, nearest_idx, test, resamp_value, input_d[nearest_idx]);
     /* set idx-th bin in resampled time series (at the pulsar) to nearest_idx bin from de-dispersed time series */ 
     output_d[idx] = input_d[nearest_idx];
+    
   }
 }
 
@@ -427,19 +429,19 @@ void device_timeseries_offset(float * d_idata, float * d_resamp_offset,
 {
   double zero_offset = tau * sin(phi) * inverse_tsamp;
   unsigned blocks = size/max_threads + 1;
-  printf("inverse_tsamp: %.6f, tsamp: %.6f, tau: %.6f, sin_phi %.6f, omega %.6f, phi %.6f \n", inverse_tsamp, tsamp, tau, sin(phi), omega, phi);
+  //printf("inverse_tsamp: %.6f, tsamp: %.6f, tau: %.6f, sin_phi %.6f, omega %.6f, phi %.6f \n", inverse_tsamp, tsamp, tau, sin(phi), omega, phi);
   if (blocks > max_blocks)
     blocks = max_blocks;
     compute_resamp_offset_circular_binary_kernel<<< blocks,max_threads >>>(d_idata, d_resamp_offset, 
-                                                                        omega, tau, phi, zero_offset, inverse_tsamp, tsamp, (double) size);
+                         omega, tau, phi, zero_offset, inverse_tsamp, tsamp, (double) size);
 
   //compute_resamp_offset_circular_binary_kernel<<< 1,10 >>>(d_idata, d_resamp_offset,
-   //                                                                      omega, tau, phi, zero_offset, inverse_tsamp, tsamp, (double) size);
+    //                                                                     omega, tau, phi, zero_offset, inverse_tsamp, tsamp, (double) size);
   ErrorChecker::check_cuda_error("Error from device_timeseries_offset");
 }
 
 
-void device_modulate_time_series_length(float * d_resamp_offset, unsigned int  nsamples_unpadded, unsigned int new_length)
+void device_modulate_time_series_length(float * d_resamp_offset, unsigned int nsamples_unpadded, unsigned int * new_length)
 {
 
 
@@ -461,7 +463,7 @@ void device_resample_circular_binary(float * d_idata, float * d_odata, float * d
   if (blocks > max_blocks)
     blocks = max_blocks;
   resamp_circular_binary_kernel<<< blocks,max_threads >>>(d_idata, d_odata, d_resamp_offset, new_length);
-  //resamp_circular_binary_kernel<<< 1,1 >>>(d_idata, d_odata, d_resamp_offset, new_length);
+  //resamp_circular_binary_kernel<<< 1,5 >>>(d_idata, d_odata, d_resamp_offset, new_length);
   ErrorChecker::check_cuda_error("Error from device_resample_circular_binary");
 }
 
@@ -499,37 +501,23 @@ int device_find_peaks(int n, int start_index, float * d_dat,
 		      thrust::device_vector<float>& d_snrs,
 		      cached_allocator& policy)
 {
-  printf("Reached Here:-3 \n");
   
   using thrust::tuple;
-  printf("Reached Here:-2 \n");
   using thrust::counting_iterator;
-  printf("Reached Here:-1 \n");
   using thrust::zip_iterator;
-  printf("Reached Here:0 \n");
   // Wrap the device pointer to let Thrust know                              
   thrust::device_ptr<float> dptr_dat(d_dat + start_index);
-  printf("Reached Here:1 \n");
   typedef thrust::device_vector<float>::iterator snr_iterator;
-  printf("Reached Here:2 \n");
   typedef thrust::device_vector<int>::iterator indices_iterator;
-  printf("Reached Here:3 \n");
   thrust::counting_iterator<int> iter(start_index);
-  printf("Reached Here:4 \n");
   zip_iterator<tuple<counting_iterator<int>,thrust::device_ptr<float> > > zipped_iter = make_zip_iterator(make_tuple(iter,dptr_dat));
-  printf("Reached Here:5 \n");
   zip_iterator<tuple<indices_iterator,snr_iterator> > zipped_out_iter = make_zip_iterator(make_tuple(d_index.begin(),d_snrs.begin()));
-  printf("Reached Here:6 \n");
   
   //apply execution policy to get some speed up
   int num_copied = thrust::copy_if(thrust::cuda::par(policy), zipped_iter, zipped_iter+n-start_index,
 				   zipped_out_iter,greater_than_threshold(thresh)) - zipped_out_iter;
-  printf("Reached Here:7 \n");
-  printf("Num copied is: %d \n", num_copied);
   thrust::copy(d_index.begin(),d_index.begin()+num_copied,indexes);
-  printf("Reached Here:8 \n");
   thrust::copy(d_snrs.begin(),d_snrs.begin()+num_copied,snrs);
-  printf("Reached Here:9 \n");
   ErrorChecker::check_cuda_error("Error from device_find_peaks;");
   return(num_copied);
 }
