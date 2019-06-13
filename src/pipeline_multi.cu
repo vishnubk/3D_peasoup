@@ -87,6 +87,9 @@ private:
   DMDispenser& manager;
   CmdLineOptions& args;
   AccelerationPlan& acc_plan;
+  //std::vector<float> angular_velocity;
+  //std::vector<float> tau;
+  //std::vector<float> phi;
   unsigned int size;
   int device;
   std::map<std::string,Stopwatch> timers;
@@ -123,13 +126,17 @@ public:
     ReusableDeviceTimeSeries<float,unsigned char> d_tim(size);
     DeviceTimeSeries<float> d_tim_r(size);
     DeviceTimeSeries<float> d_tim_resampled(size);
-    //DeviceTimeSeries<int> d_new_length(1);
-    Template_Bank* templates;
     TimeDomainResampler resampler;
     DevicePowerSpectrum<float> pspec(d_fseries);
-    //std::vector<float> angular_velocity;
-    //std::vector<float> tau;
-    //std::vector<float> phi;
+    Template_Bank* templates;
+    templates = new Template_Bank(args.templatefilename);
+
+    std::vector<float> angular_velocity = templates->get_angular_velocity();
+    std::vector<float> tau = templates->get_tau();
+    std::vector<float> phi = templates->get_phi();
+
+ if (args.verbose)
+      std::cout << "Searching "<< tau.size()<< " template-bank trials per DM " << std::endl;
     Zapper* bzap;
     if (args.zapfilename!=""){
       if (args.verbose)
@@ -137,12 +144,6 @@ public:
       bzap = new Zapper(args.zapfilename);
     }
     
-    if (args.templatefilename!=""){
-      if (args.verbose)
-        std::cout << "Using template bank file: " << args.templatefilename << std::endl;
-        //Template_Bank templates(args.templatefilename);
-        templates = new Template_Bank(args.templatefilename);
-    }
    
     Dereddener rednoise(size/2+1);
     SpectrumFormer former;
@@ -186,6 +187,7 @@ public:
       if (args.verbose)
 	    std::cout << "Searching "<< acc_list.size()<< " acceleration trials for DM "<< tim.get_dm() << std::endl;
 
+
       if (args.verbose)
 	    std::cout << "Executing forward FFT" << std::endl;
       r2cfft.execute(d_tim.get_data(),d_fseries.get_data());
@@ -220,17 +222,9 @@ public:
 	    std::cout << "Executing inverse FFT" << std::endl;
       c2rfft.execute(d_fseries.get_data(),d_tim.get_data());
 
-     }
 
-      if (args.templatefilename!=""){
-            if (args.verbose)
-              std::cout << "Reading template bank file"  << args.templatefilename << std::endl;
-              std::vector<float> angular_velocity = templates->get_angular_velocity();
-              std::vector<float> tau = templates->get_tau();
-              std::vector<float> phi = templates->get_phi();
-      
-
-      // Template-Bank Loop
+      std::cout << "Searching "<< tau.size()<< " template-bank trials per DM " << std::endl;
+    // Template-Bank Loop
       CandidateCollection_template_bank current_template_trial_cands;
       
       for (int jj=0;jj<tau.size();jj++){
@@ -317,13 +311,12 @@ public:
     if (args.zapfilename!="")
       delete bzap;
    
-    if (args.templatefilename!="")
-      delete templates;
+//    if (args.templatefilename!="")
+//      delete templates;
  
     if (args.verbose)
       std::cout << "DM processing took " << pass_timer.getTime() << " seconds"<< std::endl;
   }
-  
 };
 
 void* launch_worker_thread(void* ptr){
@@ -411,6 +404,24 @@ int main(int argc, char **argv)
         		    args.acc_pulse_width, size, filobj.get_tsamp(),
         		    filobj.get_cfreq(), filobj.get_foff()); 
   
+  std::cout << "Reading template bank file "  << args.templatefilename << std::endl;
+
+
+if (args.templatefilename==""){
+
+   std::cout << "No Template-Bank File given. Exiting Now." << std::endl;
+   exit(0);
+
+}
+  //Template_Bank* templates;
+  //templates = new Template_Bank(args.templatefilename);
+
+  //std::vector<float> angular_velocity = templates->get_angular_velocity();
+  //std::vector<float> tau = templates->get_tau();
+  //std::vector<float> phi = templates->get_phi();
+ 
+ //if (args.verbose)
+ //     std::cout << "Searching "<< tau.size()<< " template-bank trials per DM " << std::endl;
   
   //Multithreading commands
   timers["searching"].start();
@@ -421,10 +432,10 @@ int main(int argc, char **argv)
     dispenser.enable_progress_bar();
   
   for (int ii=0;ii<nthreads;ii++){
-    workers[ii] = (new Worker(trials,dispenser,acc_plan,args,size,ii));
+    workers[ii] = (new Worker(trials,dispenser,acc_plan, args,size,ii));
     pthread_create(&threads[ii], NULL, launch_worker_thread, (void*) workers[ii]);
   }
-  
+
   DMDistiller_template_bank dm_still(args.freq_tol,true);
   HarmonicDistiller_template_bank harm_still(args.freq_tol,args.max_harm,true,false);
   CandidateCollection_template_bank dm_cands;
@@ -468,24 +479,16 @@ int main(int argc, char **argv)
 
   CandidateFileWriter_template_bank cand_files(args.outdir);
   cand_files.write_binary(dm_cands.cands,"candidates_template_bank.peasoup");
-  //
   OutputFileWriter_template_bank stats;
   stats.add_misc_info();
   stats.add_header(filename);
   stats.add_search_parameters(args);
   stats.add_dm_list(dm_list);
   
-  //std::vector<float> acc_list;
-  ////std::vector<float> angular_velocity;
-  ////std::vector<float> tau;
-  ////std::vector<float> phi;
-  //acc_plan.generate_accel_list(0.0,acc_list);
-  //stats.add_acc_list(acc_list);
-  ////
-  //std::vector<int> device_idxs;
-  //for (int device_idx=0;device_idx<nthreads;device_idx++)
-  //  device_idxs.push_back(device_idx);
-  //stats.add_gpu_info(device_idxs);
+  std::vector<int> device_idxs;
+  for (int device_idx=0;device_idx<nthreads;device_idx++)
+    device_idxs.push_back(device_idx);
+  stats.add_gpu_info(device_idxs);
   stats.add_candidates(dm_cands.cands,cand_files.byte_mapping);
   timers["total"].stop();
   //stats.add_timing_info(timers);
@@ -493,6 +496,9 @@ int main(int argc, char **argv)
   std::stringstream xml_filepath;
   xml_filepath << args.outdir << "/" << "overview.xml";
   stats.to_file(xml_filepath.str());
+
+
+
   
-  //return 0;
+  return 0;
 }
