@@ -357,7 +357,7 @@ __global__ void compute_resamp_offset_circular_binary_kernel(float* input_d,
     //printf("idx is %d \n", idx);
     //printf("zero offset is: %.6f \n", zero_offset);
     
-    float t = (idx + 1) * tsamp;
+    float t = idx * tsamp;
     //printf("t is %.4f \n", t);
     float x = omega * t + phi;
     //printf("x is %.4f \n", x);
@@ -394,10 +394,10 @@ __global__ void resamp_circular_binary_kernel(float* input_d,
     /* sample idx arrives at the detector at idx - resamp_offset_d[idx], choose nearest neighbor */
     //printf("PART2 idx is: %lu, After resampling array value is: %.4f \n", idx, resamp_offset_d[idx]);
   //  printf("New length is %d \n", new_length);
-    unsigned long nearest_idx = (unsigned long)((idx + 1) - resamp_offset_d[idx] + 0.5f); 
+    unsigned long nearest_idx = (unsigned long)(idx  - resamp_offset_d[idx] + 0.5f); 
     float test = idx - resamp_offset_d[idx]; 
     float resamp_value = resamp_offset_d[idx];
-    //printf("idx is: %lu, nearest_idx is: %lu, test: %.4f, resamp_value: %.4f, input timeseries value: %.4f \n", idx, nearest_idx, test, resamp_value, input_d[nearest_idx]);
+  //  printf("idx is: %lu, nearest_idx is: %lu, test: %.4f, resamp_value: %.4f, input timeseries value: %.4f \n", idx, nearest_idx, test, resamp_value, input_d[nearest_idx]);
     /* set idx-th bin in resampled time series (at the pulsar) to nearest_idx bin from de-dispersed time series */ 
     output_d[idx] = input_d[nearest_idx];
     

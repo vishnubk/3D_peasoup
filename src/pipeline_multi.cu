@@ -154,7 +154,9 @@ public:
     std::vector<float> acc_list;
     HarmonicDistiller harm_finder(args.freq_tol,args.max_harm,false);
     HarmonicDistiller_template_bank harm_finder_template_bank(args.freq_tol,args.max_harm,false);
-    AccelerationDistiller acc_still(tobs,args.freq_tol,true);
+    //AccelerationDistiller acc_still(tobs,args.freq_tol,true);
+    //Template_Bank_Distiller template_bank_best(args.freq_tol,true);
+    Template_Bank_Distiller template_bank_best(args.freq_tol,true);
     float mean,std,rms;
     float padding_mean;
     int ii;
@@ -222,8 +224,8 @@ public:
 	    std::cout << "Executing inverse FFT" << std::endl;
       c2rfft.execute(d_fseries.get_data(),d_tim.get_data());
 
-
-      std::cout << "Searching "<< tau.size()<< " template-bank trials per DM " << std::endl;
+      if (args.verbose)
+          std::cout << "Searching "<< tau.size()<< " template-bank trials per DM " << std::endl;
     // Template-Bank Loop
       CandidateCollection_template_bank current_template_trial_cands;
       
@@ -234,7 +236,8 @@ public:
                  std::cout << "Resampling to "<< angular_velocity[jj] <<  " " << tau[jj] << " " << phi[jj] << std::endl;
 
              resampler.binary_timeseries_offset(d_tim,d_tim_r,size,angular_velocity[jj],tau[jj],phi[jj]);
-             std::cout << "Size is "<< size << std::endl;
+             if (args.verbose)
+                 std::cout << "Size is "<< size << std::endl;
 
             // Get modulated time-series length from kernel.
              unsigned int h_new_length = size - 1;
@@ -247,7 +250,8 @@ public:
 
              cudaMemcpy(&h_new_length, d_new_length, size_new_length, cudaMemcpyDeviceToHost);
              cudaFree(d_new_length);
-             std::cout << "New length is "<< h_new_length << std::endl;
+             if (args.verbose)
+                 std::cout << "New length is "<< h_new_length << std::endl;
 
             // Time-Domain Resampling
              resampler.binary_resample_circular_binary(d_tim,d_tim_resampled, d_tim_r, h_new_length);
@@ -302,7 +306,7 @@ public:
              if (args.verbose)
              std::cout << "Distilling template bank trials" << std::endl;
             dm_trial_cands.append(current_template_trial_cands.cands);
-       //dm_trial_cands.append(acc_still.distill(accel_trial_cands.cands));
+            dm_trial_cands.append(template_bank_best.distill(current_template_trial_cands.cands));
 
     }
 
@@ -395,6 +399,7 @@ int main(int argc, char **argv)
     //size = std::min(args.size,filobj.get_nsamps());
     size = args.size;
   if (args.verbose)
+    std::cout << "Filterbank has " << filobj.get_nsamps() << " points" << std::endl;
     std::cout << "Setting transform length to " << size << " points" << std::endl;
   
 

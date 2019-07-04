@@ -263,6 +263,54 @@ public:
 //NOTE: +ve acceleration is away from observer
 
 
+
+class Template_Bank_Distiller: public BaseDistiller_template_bank {
+private:
+  float tolerance;
+  
+
+  float min_doppler_freq_template_bank(double freq, double omega, double tau){
+    return freq*(1-(omega*tau));
+  }
+
+  float max_doppler_freq_template_bank(double freq, double omega, double tau){
+    return freq*(1+(omega*tau));
+  }
+
+  void condition(std::vector<Candidate_template_bank>& cands,int idx)
+  {
+    int ii,jj,kk;
+    double ratio,freq, min_doppler_fundi_freq, max_doppler_fundi_freq;
+    double fundi_freq = cands[idx].freq;
+    double fundi_omega = cands[idx].omega;
+    double fundi_tau = cands[idx].tau;
+    double fundi_phi = cands[idx].phi;
+    double template_bank_freq;
+    double edge = fundi_freq*tolerance;
+    for (ii=idx+1;ii<size;ii++){
+      /*
+      if (cands[ii].nh > cands[idx].nh){
+	continue;
+	}*/
+
+      min_doppler_fundi_freq = min_doppler_freq_template_bank(fundi_freq, fundi_omega, fundi_tau);
+      max_doppler_fundi_freq = max_doppler_freq_template_bank(fundi_freq, fundi_omega, fundi_tau);
+ 
+      if (cands[ii].freq>min_doppler_fundi_freq-edge && cands[ii].freq<max_doppler_fundi_freq+edge){
+          if (keep_related)
+            cands[idx].append(cands[ii]);
+          unique[ii]=false;
+        }       
+
+    }
+  }
+  
+public:
+  Template_Bank_Distiller(float tolerance, bool keep_related)
+    :BaseDistiller_template_bank(keep_related),tolerance(tolerance){}
+};
+
+
 class DMDistiller: public BaseDistiller {
 private:
   float tolerance;
