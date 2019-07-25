@@ -240,30 +240,32 @@ public:
              
 
              
-             if (args.verbose)
-                 std::cout << "Size is "<< size << std::endl;
+             //if (args.verbose)
+             //    std::cout << "Size is "<< size << std::endl;
 
-             unsigned int h_new_length = size - 1;
-             unsigned int *d_new_length;
-             int size_new_length = sizeof(int);
-             cudaMalloc((void **)&d_new_length, size_new_length);
-             cudaMemcpy(d_new_length, &h_new_length, size_new_length, cudaMemcpyHostToDevice);
+             //unsigned int h_new_length = size - 1;
+             //unsigned int *d_new_length;
+             //int size_new_length = sizeof(int);
+             //cudaMalloc((void **)&d_new_length, size_new_length);
+             //cudaMemcpy(d_new_length, &h_new_length, size_new_length, cudaMemcpyHostToDevice);
 
-             resampler.binary_modulate_time_series_length(d_tim_resampled, size, d_new_length);
+             ////resampler.binary_modulate_time_series_length(d_tim_resampled, size, d_new_length);
+             //
+             //resampler.new_binary_modulate_time_series_length(d_tim_resampled, size, d_new_length);
 
-             cudaMemcpy(&h_new_length, d_new_length, size_new_length, cudaMemcpyDeviceToHost);
-             cudaFree(d_new_length);
-             if (args.verbose)
-                 std::cout << "New length is "<< h_new_length << std::endl;
+             //cudaMemcpy(&h_new_length, d_new_length, size_new_length, cudaMemcpyDeviceToHost);
+             //cudaFree(d_new_length);
+             //if (args.verbose)
+             //    std::cout << "New length is "<< h_new_length << std::endl;
 
 
  
-             if (h_new_length < size)
-              if (args.verbose)
-               std::cout << "Mean padding "<< size-h_new_length << " samples since resampled time series is different from observed" << std::endl;
-             
-              padding_mean = stats::mean<float>(d_tim_resampled.get_data(),h_new_length);
-              d_tim_resampled.fill(h_new_length,size,padding_mean); 
+             //if (h_new_length < size)
+             // if (args.verbose)
+             //  std::cout << "Mean padding "<< size-h_new_length << " samples since resampled time series is different from observed" << std::endl;
+             //
+             // padding_mean = stats::mean<float>(d_tim_resampled.get_data(),h_new_length);
+             // d_tim_resampled.fill(h_new_length,size,padding_mean); 
 
              //float* test_block0;
              //float* test_block1; 
@@ -284,8 +286,8 @@ public:
 
              if (args.verbose)
               std::cout << "Execute forward FFT" << std::endl;
-            //r2cfft.execute(d_tim_resampled.get_data(),d_fseries.get_data());
-            r2cfft.execute(d_tim.get_data(),d_fseries.get_data());
+            r2cfft.execute(d_tim_resampled.get_data(),d_fseries.get_data());
+            //r2cfft.execute(d_tim.get_data(),d_fseries.get_data());
 
             if (args.verbose)
               std::cout << "Form interpolated power spectrum" << std::endl;

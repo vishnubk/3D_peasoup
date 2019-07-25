@@ -46,6 +46,13 @@ public:
     device_modulate_time_series_length(input.get_data(), nsamples_unpadded, new_length);
   }
 
+  void new_binary_modulate_time_series_length(DeviceTimeSeries<float>& input, unsigned int  nsamples_unpadded, unsigned int* new_length)
+
+   {
+    //unsigned new_length = nsamples_unpadded -1;
+    device_new_modulate_time_series_length(input.get_data(), nsamples_unpadded, new_length);
+  }
+
   void binary_resample_circular_binary(DeviceTimeSeries<float>& input, DeviceTimeSeries<float>& output, DeviceTimeSeries<float>& offset,
                      unsigned int new_length)
   

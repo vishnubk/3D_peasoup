@@ -390,6 +390,21 @@ __global__ void compute_timeseries_length_circular_binary_kernel(float* d_resamp
 }
 
 
+__global__ void new_compute_timeseries_length_circular_binary_kernel(float* d_resamp_offset, unsigned int nsamples_unpadded, unsigned int* new_length)
+{
+  size_t n_steps = nsamples_unpadded - 1;
+  //printf("Number of steps is %d \n", n_steps);
+  //printf("Resamp offset is %.4f \n", d_resamp_offset[n_steps]);
+  while(d_resamp_offset[n_steps] == 0.0)
+{
+        n_steps--;
+        //printf("Number of steps is %d \n", n_steps);
+        //printf("Number of unpadded samples is %d \n", nsamples_unpadded - 1);
+}
+  *new_length = n_steps;
+}
+
+
 __global__ void resamp_circular_binary_kernel(float* input_d,
                                   float* output_d,
                                   float* resamp_offset_d,
@@ -420,10 +435,10 @@ __global__ void new_resampler_circular_binary_large_timeseries_kernel(float* inp
     unsigned long out_idx = getTemplate_Bank_Index(idx, omega, tau, phi, zero_offset,
                                   inverse_tsamp, tsamp);
     //if (out_idx - idx!=0) 
-    //    printf("Out_Index: %lu, Inp_Index: %lu, Size: %lu,  \n", out_idx, idx, size);
+    //printf("Out_Index: %lu, Inp_Index: %lu, Size: %lu,  \n", out_idx, idx, size);
     if (out_idx <= size - 1) 
         output_d[idx] = input_d[out_idx];
-    
+      
   }
 }
 
@@ -474,6 +489,21 @@ void device_modulate_time_series_length(float * d_resamp_offset, unsigned int ns
   compute_timeseries_length_circular_binary_kernel<<< blocks,threads >>>(d_resamp_offset, nsamples_unpadded, new_length);
   ErrorChecker::check_cuda_error("Error from device_modulate_time_series_length");
 }
+
+void device_new_modulate_time_series_length(float * d_resamp_offset, unsigned int nsamples_unpadded, unsigned int * new_length)
+{
+
+
+  //dim3 dimBlockResampLength(1); // single thread per block (1D)
+  //dim3 dimGridResampLength(1);  // single block in grid (1D)
+
+  unsigned blocks = 1;
+  unsigned threads = 1;
+
+  new_compute_timeseries_length_circular_binary_kernel<<< blocks,threads >>>(d_resamp_offset, nsamples_unpadded, new_length);
+  ErrorChecker::check_cuda_error("Error from new device_modulate_time_series_length");
+}
+
 
 void device_resample_circular_binary(float * d_idata, float * d_odata, float * d_resamp_offset,
                      unsigned int new_length, unsigned int max_threads, unsigned int max_blocks)

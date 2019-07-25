@@ -138,6 +138,7 @@ void device_timeseries_offset(float * d_idata, float * d_resamp_offset,
 
 void device_modulate_time_series_length(float * d_resamp_offset, unsigned int  nsamples_unpadded, unsigned int * new_length);
 
+void device_new_modulate_time_series_length(float * d_resamp_offset, unsigned int  nsamples_unpadded, unsigned int * new_length);
 
 void device_resample_circular_binary(float * d_idata, float * d_odata, float * d_resamp_offset,
                      unsigned int new_length, unsigned int max_threads, unsigned int max_blocks);
