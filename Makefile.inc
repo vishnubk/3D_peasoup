@@ -1,6 +1,6 @@
 # This is where common definitions go
 
-INSTALL_DIR = /p/scratch/cpadc/vishnu/debug_software
+INSTALL_DIR = /p/scratch/cpadc/vishnu/32bit_softwares/template_bank_installed_binaries
 
 #cuda setup
 CUDA_DIR   = /gpfs/software/opt/cuda/8.0.61
@@ -9,7 +9,7 @@ CUDA_DIR   = /gpfs/software/opt/cuda/8.0.61
 THRUST_DIR = /usr/local/cuda/
 
 # dedisp setup
-DEDISP_DIR = /p/scratch/cpadc/vishnu/softwares
+DEDISP_DIR = /p/scratch/cpadc/vishnu/32bit_softwares/dedisp
 
 GCC       = gcc
 GXX       = g++
