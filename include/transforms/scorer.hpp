@@ -22,11 +22,11 @@ private:
     return ddm*tdm_band_partial;
   }
   
-  inline bool has_physical_period(Candidate& cand){
+  inline bool has_physical_period(Candidate_template_bank& cand){
     return 1.0/cand.freq>tdm_chan(cand.dm);
   }
 
-  inline bool has_adjacency(Candidate& cand){
+  inline bool has_adjacency(Candidate_template_bank& cand){
     int idx = cand.dm_idx;
     bool adjacent = false; 
     bool unique = true;
@@ -44,7 +44,7 @@ private:
       return false;
   }
   
-  inline void delta_dm_ratio(Candidate& cand){
+  inline void delta_dm_ratio(Candidate_template_bank& cand){
     int inside_count = 1;
     int total_count = 1;
     float inside_snr = cand.snr;
@@ -74,13 +74,13 @@ public:
     tdm_band_partial = 4150.0*(1.0/std::pow(fbottom,2) - 1.0/std::pow(ftop,2));
   }
 
-  void score(Candidate& cand){
+  void score(Candidate_template_bank& cand){
     cand.is_physical = has_physical_period(cand);
     cand.is_adjacent = has_adjacency(cand);
     delta_dm_ratio(cand);
   }
 
-  void score_all(std::vector<Candidate>& cands){
+  void score_all(std::vector<Candidate_template_bank>& cands){
     for (int ii=0;ii<cands.size();ii++)
       score(cands[ii]);
   }

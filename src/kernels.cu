@@ -23,6 +23,7 @@
 #include <math.h>
 #include <thrust/system/cuda/vector.h>
 #include <thrust/system/cuda/execution_policy.h>
+#include <thrust/functional.h>
 #include <map>
 #include <unistd.h>
 #define SQRT2 1.4142135623730951f
@@ -212,19 +213,27 @@ void device_harmonic_sum(float* d_input_array, float** d_output_array,
 
 //Could be optimised with shared memory
 
-__global__ 
-void power_series_kernel(cufftComplex *d_idata, float* d_odata, 
-			 size_t size, size_t gulp_index)
+
+__global__
+void power_series_kernel(cufftComplex *d_idata, float* d_odata,
+                         size_t size, size_t gulp_index)
 {
   int idx = blockIdx.x * blockDim.x + threadIdx.x + gulp_index;
   cufftComplex& x = d_idata[idx];
   if(idx<size)
     {
       float z = x.x*x.x+x.y*x.y;
-      d_odata[idx] = z*rsqrtf(z);
+      if (z==0) {
+        printf("zero at %d\n", idx);
+        d_odata[idx] = 0;
+      }
+      else{
+        d_odata[idx] = z*rsqrtf(z);
+      }
     }
   return;
 }
+
 
 //Could be optimised with shared memory
 
@@ -378,8 +387,6 @@ __device__ unsigned long getTemplate_Bank_Index(unsigned long idx,
 __global__ void compute_timeseries_length_circular_binary_kernel(float* d_resamp_offset, unsigned int nsamples_unpadded, unsigned int* new_length)
 {
   size_t n_steps = nsamples_unpadded - 1;
-  //printf("Number of steps is %d \n", n_steps);
-  //printf("Resamp offset is %.4f \n", d_resamp_offset[n_steps]);
   while(n_steps - d_resamp_offset[n_steps] >= nsamples_unpadded - 1) 
 { 
         n_steps--;
@@ -393,13 +400,9 @@ __global__ void compute_timeseries_length_circular_binary_kernel(float* d_resamp
 __global__ void new_compute_timeseries_length_circular_binary_kernel(float* d_resamp_offset, unsigned int nsamples_unpadded, unsigned int* new_length)
 {
   size_t n_steps = nsamples_unpadded - 1;
-  //printf("Number of steps is %d \n", n_steps);
-  //printf("Resamp offset is %.4f \n", d_resamp_offset[n_steps]);
   while(d_resamp_offset[n_steps] == 0.0)
 {
         n_steps--;
-        //printf("Number of steps is %d \n", n_steps);
-        //printf("Number of unpadded samples is %d \n", nsamples_unpadded - 1);
 }
   *new_length = n_steps;
 }
@@ -434,8 +437,6 @@ __global__ void new_resampler_circular_binary_large_timeseries_kernel(float* inp
   {
     unsigned long out_idx = getTemplate_Bank_Index(idx, omega, tau, phi, zero_offset,
                                   inverse_tsamp, tsamp);
-    //if (out_idx - idx!=0) 
-    //printf("Out_Index: %lu, Inp_Index: %lu, Size: %lu,  \n", out_idx, idx, size);
     if (out_idx <= size - 1) 
         output_d[idx] = input_d[out_idx];
       
@@ -464,14 +465,11 @@ void device_timeseries_offset(float * d_idata, float * d_resamp_offset,
 {
   double zero_offset = tau * sin(phi) * inverse_tsamp;
   unsigned blocks = size/max_threads + 1;
-  //printf("inverse_tsamp: %.6f, tsamp: %.6f, tau: %.6f, sin_phi %.6f, omega %.6f, phi %.6f \n", inverse_tsamp, tsamp, tau, sin(phi), omega, phi);
   if (blocks > max_blocks)
     blocks = max_blocks;
     compute_resamp_offset_circular_binary_kernel<<< blocks,max_threads >>>(d_idata, d_resamp_offset, 
                          omega, tau, phi, zero_offset, inverse_tsamp, tsamp, (double) size);
 
-  //compute_resamp_offset_circular_binary_kernel<<< 1,10 >>>(d_idata, d_resamp_offset,
-    //                                                                     omega, tau, phi, zero_offset, inverse_tsamp, tsamp, (double) size);
   ErrorChecker::check_cuda_error("Error from device_timeseries_offset");
 }
 
@@ -627,6 +625,35 @@ float GPU_mean(T* d_collection,int nsamps, int min_bin)
 
 
 template<typename T>
+void GPU_remove_baseline(T* d_collection, int nsamps){
+  float mean  = 0.0;
+
+  int count = 0;
+  do{
+    mean = GPU_mean(d_collection, nsamps, 0);
+
+    thrust::for_each(thrust::device_ptr<T>(d_collection),
+        thrust::device_ptr<T>(d_collection)+nsamps,thrust::placeholders::_1 -= mean);
+
+
+    if(count++ > 100) break;
+
+  }while(abs(mean) > 5e-7 * nsamps);
+
+  thrust::for_each(thrust::device_ptr<T>(d_collection),
+        thrust::device_ptr<T>(d_collection)+nsamps,thrust::placeholders::_1 -= mean);
+
+
+//  float mean = GPU_mean(d_collection, nsamps, 0);
+
+//  thrust::for_each(thrust::device_ptr<T>(d_collection),   thrust::device_ptr<T>(d_collection)+nsamps,thrust::placeholders::_1 -= mean);
+
+}
+
+
+
+
+template<typename T>
 void GPU_fill(T* start, T* end, T value){
   thrust::device_ptr<T> ar_start(start);
   thrust::device_ptr<T> ar_end(end);
@@ -638,6 +665,7 @@ template void GPU_fill<float>(float*, float*, float);
 template float GPU_rms<float>(float*,int,int);
 template float GPU_mean<float>(float*,int,int);
 
+template void GPU_remove_baseline<float>(float*,int);
 __global__
 void normalisation_kernel(float*d_powers, float mean, float sigma, 
 			  size_t size, size_t gulp_idx)
@@ -1319,7 +1347,7 @@ void conversion_kernel(X* x, Y* y, unsigned int size,
 {
   int idx = blockIdx.x * blockDim.x + threadIdx.x + gulp_idx;
   if (idx<size)
-    y[idx] = x[idx];
+    y[idx] = static_cast<Y>(x[idx]);
   return;
 }
 
@@ -1340,5 +1368,5 @@ void device_conversion(X* x, Y* y, unsigned int size,
 
 template void device_conversion<char,float>(char*, float*, unsigned int, unsigned int, unsigned int);
 template void device_conversion<unsigned char,float>(unsigned char*, float*, unsigned int, unsigned int, unsigned int);
-
+template void device_conversion<unsigned char, double>(unsigned char*, double*, unsigned int, unsigned int, unsigned int);
 

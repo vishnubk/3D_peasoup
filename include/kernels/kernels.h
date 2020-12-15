@@ -306,6 +306,11 @@ void GPU_fill(T* start,
 	      T* end,
 	      T value);
 
+template <typename T>
+void GPU_remove_baseline(T* d_collection,
+          int nsamps);
+
+
 //----------coincidencer-----------//
 
 void device_coincidencer(float** arrays, 

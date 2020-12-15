@@ -260,6 +260,7 @@ public:
     OnHostType* copy_buffer;
     Utils::device_malloc<OnDeviceType>(&this->data_ptr,this->nsamps);
     Utils::device_malloc<OnHostType>(&copy_buffer,this->nsamps);
+    
     Utils::h2dcpy(copy_buffer,host_tim.get_data(),this->nsamps*sizeof(OnHostType));
     device_conversion<OnHostType,OnDeviceType>(copy_buffer, this->data_ptr,
                                                (unsigned int)this->nsamps,
@@ -267,6 +268,13 @@ public:
                                                (unsigned int)MAX_THREADS);
     this->tsamp = host_tim.get_tsamp();
     Utils::device_free(copy_buffer);
+  }
+
+  void remove_baseline(unsigned int nsamps=0){
+
+    if(nsamps == 0) nsamps = this->nsamps;
+
+    GPU_remove_baseline<OnDeviceType>(this->data_ptr,nsamps);
   }
 
   /*!
@@ -336,7 +344,7 @@ public:
   {
     size_t size = std::min(host_tim.get_nsamps(),this->nsamps);
     this->tsamp = host_tim.get_tsamp();
-    Utils::h2dcpy(copy_buffer, host_tim.get_data(), size*sizeof(OnHostType));
+    Utils::h2dcpy(copy_buffer, host_tim.get_data(), size);
     device_conversion<OnHostType,OnDeviceType>(copy_buffer, this->data_ptr,
                                                (unsigned int)size,
                                                (unsigned int)MAX_BLOCKS,
@@ -365,7 +373,7 @@ public:
 template <class T>
 class TimeSeriesContainer {
 protected:
-  T* data_ptr; /*!< Pointer to timeseries.*/
+  std::vector<T> data; /*!< Pointer to timeseries.*/
   unsigned int nsamps; /*!< Number of samples in each timeseries.*/
   float tsamp; /*!< Sampling time of each timeseries (seconds).*/
   unsigned int count; /*!< Number of timeseries.*/
@@ -378,8 +386,8 @@ protected:
     \param tsamp Sampling time (seconds).
     \param count Number of timeseries.
   */
-  TimeSeriesContainer(T* data_ptr, unsigned int nsamps, float tsamp, unsigned int count)
-    :data_ptr(data_ptr),nsamps(nsamps),tsamp(tsamp),count(count){}
+  TimeSeriesContainer(float tsamp)
+    :tsamp(tsamp){}
   
 public:
   /*!
@@ -391,10 +399,13 @@ public:
   
   /*!
   \brief Get the number of samples in each timeseries.
-
   \return Number of samples.
   */
   unsigned int get_nsamps(void){return nsamps;}
+
+
+  void set_nsamps(unsigned int nsamps_in){ nsamps = nsamps_in;}
+
   
   /*!
     \brief Set the sampling time of each timeseries.
@@ -416,7 +427,20 @@ public:
     
     \return Pointer to timeseries data.
   */
-  T* get_data(void){return data_ptr;}
+  std::vector<T> get_data(void){return data;}
+
+  unsigned int* get_data_ptr(){
+    return data.data();
+  }
+
+
+  void resize(unsigned int out_nsamps, unsigned int count_in){
+    nsamps = out_nsamps;
+    count = count_in;
+    data.resize(out_nsamps * count_in);
+
+  }
+
 };
 
 
@@ -444,11 +468,8 @@ public:
     \param dm_list_in A vector of dispersion measures.
     \note The number of timeseries in the container is dm_list_in.size().
   */
-  DispersionTrials(T* data_ptr, unsigned int nsamps, float tsamp, std::vector<float> dm_list_in)
-    :TimeSeriesContainer<T>(data_ptr,nsamps,tsamp, (unsigned int)dm_list_in.size())
-  {
-    dm_list.swap(dm_list_in);
-  }
+  DispersionTrials(float tsamp)
+    :TimeSeriesContainer<T>(tsamp){}
   
   /*!
     \brief Select the Nth timeseries.
@@ -458,7 +479,7 @@ public:
   */
   DedispersedTimeSeries<T> operator[](int idx)
   {
-    T* ptr = this->data_ptr+idx*(size_t)this->nsamps;
+    T* ptr = this->get_data_ptr() + idx*(size_t)this->nsamps;
     return DedispersedTimeSeries<T>(ptr, this->nsamps, this->tsamp, dm_list[idx]);
   }
   
@@ -471,12 +492,17 @@ public:
     overloaded [] operator.
   */
   void get_idx(unsigned int idx, DedispersedTimeSeries<T>& tim){
-    T* ptr = this->data_ptr+(size_t)idx*(size_t)this->nsamps;
+    T* ptr = this->get_data_ptr() + (size_t)idx*(size_t)this->nsamps;
     tim.set_data(ptr);
     tim.set_dm(dm_list[idx]);
     tim.set_nsamps(this->nsamps);
     tim.set_tsamp(this->tsamp);
   }
+  void resize(unsigned int out_nsamps, std::vector<float> dm_list_in){
+    dm_list.swap(dm_list_in);
+    TimeSeriesContainer<T>::resize(out_nsamps, dm_list.size());
+  }
+
 };
 
 
