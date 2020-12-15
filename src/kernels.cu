@@ -1368,5 +1368,6 @@ void device_conversion(X* x, Y* y, unsigned int size,
 
 template void device_conversion<char,float>(char*, float*, unsigned int, unsigned int, unsigned int);
 template void device_conversion<unsigned char,float>(unsigned char*, float*, unsigned int, unsigned int, unsigned int);
+template void device_conversion<unsigned int,float>(unsigned int*, float*, unsigned int, unsigned int, unsigned int);
 template void device_conversion<unsigned char, double>(unsigned char*, double*, unsigned int, unsigned int, unsigned int);
 

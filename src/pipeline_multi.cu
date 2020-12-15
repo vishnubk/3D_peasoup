@@ -32,9 +32,11 @@
 #include <cmath>
 #include <map>
 
+typedef unsigned int DedispOutputType;
+
 class DMDispenser {
 private:
-  DispersionTrials<unsigned char>& trials;
+  DispersionTrials<DedispOutputType>& trials;
   pthread_mutex_t mutex;
   int dm_idx;
   int count;
@@ -42,13 +44,13 @@ private:
   bool use_progress_bar;
 
 public:
-  DMDispenser(DispersionTrials<unsigned char>& trials)
+  DMDispenser(DispersionTrials<DedispOutputType>& trials)
     :trials(trials),dm_idx(0),use_progress_bar(false){
     count = trials.get_count();
     pthread_mutex_init(&mutex, NULL);
   }
   
-  void enable_progress_bar(){
+   void enable_progress_bar(){
     progress = new ProgressBar();
     use_progress_bar = true;
   }
@@ -85,13 +87,10 @@ public:
 
 class Worker {
 private:
-  DispersionTrials<unsigned char>& trials;
+  DispersionTrials<DedispOutputType>& trials;
   DMDispenser& manager;
   CmdLineOptions& args;
   AccelerationPlan& acc_plan;
-  //std::vector<float> angular_velocity;
-  //std::vector<float> tau;
-  //std::vector<float> phi;
   unsigned int size;
   int device;
   std::map<std::string,Stopwatch> timers;
@@ -99,8 +98,8 @@ private:
 public:
   CandidateCollection_template_bank dm_trial_cands;
 
-  Worker(DispersionTrials<unsigned char>& trials, DMDispenser& manager, 
-	 AccelerationPlan& acc_plan, CmdLineOptions& args, unsigned int size, int device)
+  Worker(DispersionTrials<DedispOutputType>& trials, DMDispenser& manager,
+         AccelerationPlan& acc_plan, CmdLineOptions& args, unsigned int size, int device)
     :trials(trials),manager(manager),acc_plan(acc_plan),args(args),size(size),device(device){}
   
   void start(void)
@@ -124,9 +123,8 @@ public:
     float tobs = size*trials.get_tsamp();
     float bin_width = 1.0/tobs;
     DeviceFourierSeries<cufftComplex> d_fseries(size/2+1,bin_width);
-    DedispersedTimeSeries<unsigned char> tim;
-    ReusableDeviceTimeSeries<float,unsigned char> d_tim(size);
-    //DeviceTimeSeries<float> d_tim_r(size);
+    DedispersedTimeSeries<DedispOutputType> tim;
+    ReusableDeviceTimeSeries<float, DedispOutputType> d_tim(size);
     DeviceTimeSeries<float> d_tim_resampled(size);
     TimeDomainResampler resampler;
     DevicePowerSpectrum<float> pspec(d_fseries);
@@ -294,12 +292,6 @@ public:
       std::cout << "DM processing took " << pass_timer.getTime() << " seconds"<< std::endl;
   }
 };
-
-void* launch_worker_thread(void* ptr){
-  reinterpret_cast<Worker*>(ptr)->start();
-  return NULL;
-}
-
 
 void* launch_worker_thread(void* ptr){
   reinterpret_cast<Worker*>(ptr)->start();
