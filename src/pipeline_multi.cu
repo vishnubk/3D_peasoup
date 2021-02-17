@@ -238,52 +238,6 @@ public:
 
              resampler.resampler_3D_circular_orbit_large_timeseries(d_tim,d_tim_resampled,size,angular_velocity[jj],tau[jj],phi[jj]);
              
-
-             
-             //if (args.verbose)
-             //    std::cout << "Size is "<< size << std::endl;
-
-             //unsigned int h_new_length = size - 1;
-             //unsigned int *d_new_length;
-             //int size_new_length = sizeof(int);
-             //cudaMalloc((void **)&d_new_length, size_new_length);
-             //cudaMemcpy(d_new_length, &h_new_length, size_new_length, cudaMemcpyHostToDevice);
-
-             ////resampler.binary_modulate_time_series_length(d_tim_resampled, size, d_new_length);
-             //
-             //resampler.new_binary_modulate_time_series_length(d_tim_resampled, size, d_new_length);
-
-             //cudaMemcpy(&h_new_length, d_new_length, size_new_length, cudaMemcpyDeviceToHost);
-             //cudaFree(d_new_length);
-             //if (args.verbose)
-             //    std::cout << "New length is "<< h_new_length << std::endl;
-
-
- 
-             //if (h_new_length < size)
-             // if (args.verbose)
-             //  std::cout << "Mean padding "<< size-h_new_length << " samples since resampled time series is different from observed" << std::endl;
-             //
-             // padding_mean = stats::mean<float>(d_tim_resampled.get_data(),h_new_length);
-             // d_tim_resampled.fill(h_new_length,size,padding_mean); 
-
-             //float* test_block0;
-             //float* test_block1; 
-             //Utils::host_malloc<float>(&test_block0,size);
-             //Utils::host_malloc<float>(&test_block1,size);
-
-             //Utils::d2hcpy(test_block0,d_tim_resampled.get_data(),size);
-             //Utils::d2hcpy(test_block1,d_tim.get_data(),size);
-
-             //for (int ii=0;ii<size;ii++){
-             //if (fabs(test_block0[ii]-test_block1[ii])>0.0001)
-             //   printf("[WRONG (%d)] %f != %f\n",ii,test_block0[ii],test_block1[ii]);
-             //printf("%d %f %f \n",ii,test_block0[ii], test_block1[ii]);
-//  }
-
-           // Utils::host_free(test_block0);
-           // Utils::host_free(test_block1);
-
              if (args.verbose)
               std::cout << "Execute forward FFT" << std::endl;
             r2cfft.execute(d_tim_resampled.get_data(),d_fseries.get_data());
