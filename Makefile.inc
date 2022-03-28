@@ -1,15 +1,14 @@
 # This is where common definitions go
-
-INSTALL_DIR = /fred/oz002/vishnu/TRAPUM/installed_binaries
+INSTALL_DIR = /usr/local
 
 #cuda setup
-CUDA_DIR   = /apps/skylake/software/core/cuda/9.0.176
+CUDA_DIR   = /usr/local/cuda/
 
 #Thrust 1.7.1 or higher
-THRUST_DIR = /fred/oz002/psrhome/opt/thrust-1.7
+THRUST_DIR = /usr/local/cuda/
 
 # dedisp setup
-DEDISP_DIR = /fred/oz002/vishnu/TRAPUM/dedisp
+DEDISP_DIR = /usr/local/
 
 GCC       = gcc
 GXX       = g++
