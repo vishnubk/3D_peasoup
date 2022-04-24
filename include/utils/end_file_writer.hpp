@@ -59,6 +59,7 @@ public:
     search_options.append(XML::Element("outfilename",args.outfilename));
     search_options.append(XML::Element("killfilename",args.killfilename));
     search_options.append(XML::Element("zapfilename",args.zapfilename));
+    search_options.append(XML::Element("template_bank_filename",args.templatefilename));
     search_options.append(XML::Element("max_num_threads",args.max_num_threads));
     search_options.append(XML::Element("size",args.size));
     search_options.append(XML::Element("dm_start",args.dm_start));

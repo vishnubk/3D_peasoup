@@ -32,7 +32,7 @@
 #include <cmath>
 #include <map>
 
-typedef unsigned int DedispOutputType;
+typedef float DedispOutputType;
 
 class DMDispenser {
 private:
@@ -147,7 +147,6 @@ public:
    
     Dereddener rednoise(size/2+1);
     SpectrumFormer former;
-    PeakFinder cand_finder(args.min_snr,args.min_freq,args.max_freq,size);
     PeakFinder_template_bank cand_finder_template_bank(args.min_snr,args.min_freq,args.max_freq,size);
     HarmonicSums<float> sums(pspec,args.nharmonics);
     HarmonicFolder harm_folder(sums);
@@ -168,26 +167,41 @@ public:
         break;
       trials.get_idx(ii,tim);
 
-     if (args.verbose)
-        std::cout << "Copying DM trial to device (DM: " << tim.get_dm() << ")"<< std::endl;
+      if (args.verbose)
+      {
+          std::cout << "Copying DM trial to device (DM: " << tim.get_dm() << ")"<< std::endl;
+          std::cout << "Transferring " << tim.get_nsamps() << " samples" << std::endl;
+      }
 
-      Utils::dump_host_buffer<unsigned int>(tim.get_data(), tim.get_nsamps(), "raw_timeseries_before_baseline_removal_host.dump");
+      //Utils::dump_host_buffer<float>(tim.get_data(), tim.get_nsamps(), "raw_timeseries_before_baseline_removal_host.dump");
 
       d_tim.copy_from_host(tim);
-
-      Utils::dump_device_buffer<float>(d_tim.get_data(), d_tim.get_nsamps(), "raw_timeseries_before_baseline_removal.dump");
-
-      d_tim.remove_baseline(trials.get_nsamps());
-
-
-      Utils::dump_device_buffer<float>(d_tim.get_data(), d_tim.get_nsamps(), "raw_timeseries_after_baseline_removal.dump");    
+      if (args.verbose) std::cout << "Copy from host complete\n";
+      //Utils::dump_device_buffer<float>(d_tim.get_data(), d_tim.get_nsamps(), "raw_timeseries_before_baseline_removal.dump");
+      if (args.verbose) std::cout << "Removing baseline\n";
+      d_tim.remove_baseline(std::min(tim.get_nsamps(), d_tim.get_nsamps()));
+      if (args.verbose) std::cout << "Baseline removed\n";
+      //Utils::dump_device_buffer<float>(d_tim.get_data(), d_tim.get_nsamps(), "raw_timeseries_after_baseline_removal.dump");
 
       
       //timers["rednoise"].start()
+
+      // Mean Padding
+      //if (padding){
+	  //  padding_mean = stats::mean<float>(d_tim.get_data(),trials.get_nsamps());
+	  //  d_tim.fill(trials.get_nsamps(),d_tim.get_nsamps(),padding_mean);
+      // }
+
+      // Zero Padding 
       if (padding){
-	    padding_mean = stats::mean<float>(d_tim.get_data(),trials.get_nsamps());
-	    d_tim.fill(trials.get_nsamps(),d_tim.get_nsamps(),padding_mean);
-      }
+        if (args.verbose) std::cout << "Padding with zeros\n";
+              if (tim.get_nsamps() >= d_tim.get_nsamps()){
+                  
+              } else {
+                  d_tim.fill(trials.get_nsamps(), d_tim.get_nsamps(), 0);
+              }
+          //padding_mean = stats::mean<float>(d_tim.get_data(),trials.get_nsamps());
+        }
 
       if (args.verbose)
 	    std::cout << "Generating accelration list" << std::endl;
@@ -381,53 +395,63 @@ int main(int argc, char **argv)
     std::cout << "Generating DM list" << std::endl;
   std::vector<float> full_dm_list;
  
-  if (args.dm_file=="none") {
-    Dedisperser dedisperser(filobj,nthreads);
-    dedisperser.generate_dm_list(args.dm_start,args.dm_end,args.dm_pulse_width,args.dm_tol);
+ if (args.dm_file=="none") {
+    Dedisperser dedisperser(filobj, nthreads);
+    dedisperser.generate_dm_list(args.dm_start, args.dm_end, args.dm_pulse_width, args.dm_tol);
     full_dm_list = dedisperser.get_dm_list();
-
   }
   else {
       bool result = getFileContent(args.dm_file, full_dm_list);
-  }  
+  }
 
-
-  int ndm_trial_gulp = args.ndm_trial_gulp != -1 ?  args.ndm_trial_gulp : full_dm_list.size();
-
-  for(int idx=0; idx< full_dm_list.size(); idx += ndm_trial_gulp){
-
-    int start = idx;
-    int end   = (idx + ndm_trial_gulp) > full_dm_list.size() ? full_dm_list.size(): (idx + ndm_trial_gulp) ;
-
+  float nbytes = args.host_ram_limit_gb * 1e9;
+  std::size_t ndm_trial_gulp = std::size_t(nbytes / (filobj.get_nsamps() * sizeof(float)));
+  if (ndm_trial_gulp == 0)
+  {
+    throw std::runtime_error("Insufficient RAM specified to allow for dedispersion");
+  }
+  else if (ndm_trial_gulp > full_dm_list.size())
+  {
+    ndm_trial_gulp = full_dm_list.size();
+  }
+  for(std::size_t idx=0; idx < full_dm_list.size(); idx += ndm_trial_gulp){
+    std::size_t start = idx;
+    std::size_t end   = (idx + ndm_trial_gulp) > full_dm_list.size() ? full_dm_list.size(): (idx + ndm_trial_gulp) ;
     if(args.verbose) std::cout << "Gulp start: " << start << " end: " << end << std::endl;
-
     std::vector<float> dm_list_chunk(full_dm_list.begin() + start,  full_dm_list.begin() + end);
-
-    Dedisperser dedisperser(filobj,nthreads);
-
+    Dedisperser dedisperser(filobj, nthreads);
     if (args.killfilename!=""){
       if (args.verbose)
         std::cout << "Using killfile: " << args.killfilename << std::endl;
       dedisperser.set_killmask(args.killfilename);
     }
 
-
     dedisperser.set_dm_list(dm_list_chunk);
 
     if (args.verbose){
     std::cout << dm_list_chunk.size() << " DM trials" << std::endl;
-    for (int ii=0;ii<dm_list_chunk.size();ii++)
+    for (std::size_t ii = 0; ii < dm_list_chunk.size(); ii++)
+    {
       std::cout << dm_list_chunk[ii] << std::endl;
+    }
     std::cout << "Executing dedispersion" << std::endl;
     }
 
-    if (args.progress_bar) std::cout <<"Starting dedispersion:" <<start << "to" << end << "..." << std::endl;
+    if (args.progress_bar) std::cout <<"Starting dedispersion: " << start << " to " << end << "..." << std::endl;
 
     timers["dedispersion"].start();
     PUSH_NVTX_RANGE("Dedisperse",3)
     DispersionTrials<DedispOutputType> trials(filobj.get_tsamp());
     std::cout <<"dedispersing...." <<std::endl;
-    dedisperser.dedisperse(trials);
+
+    std::size_t gulp_size;
+    if (args.dedisp_gulp == -1){
+      gulp_size = filobj.get_nsamps();
+    } else {
+      gulp_size = args.dedisp_gulp;
+    }
+
+    dedisperser.dedisperse(trials, 0, filobj.get_nsamps(), gulp_size);
     POP_NVTX_RANGE
     timers["dedispersion"].stop();
 
@@ -438,7 +462,7 @@ int main(int argc, char **argv)
     if (args.progress_bar)
       printf("Complete (execution time %.2f s)\n",timers["dedispersion"].getTime());
 
-    if (args.progress_bar) std::cout <<"Starting searching..."  << std::endl;
+    std::cout <<"Starting searching..."  << std::endl;
 
     //Multithreading commands
     timers["searching"].start();
@@ -513,10 +537,10 @@ if (args.templatefilename==""){
   stats.add_gpu_info(device_idxs);
   stats.add_candidates(dm_cands.cands,cand_files.byte_mapping);
   timers["total"].stop();
-  //stats.add_timing_info(timers);
-  //
+  stats.add_timing_info(timers);
+ 
   std::stringstream xml_filepath;
-  xml_filepath << args.outdir << "/" << "overview.xml";
+  xml_filepath << args.outdir << "/" << "3D_template_bank_peasoup_candidates.xml";
   stats.to_file(xml_filepath.str());
   std::cerr << "all done" << std::endl;
 

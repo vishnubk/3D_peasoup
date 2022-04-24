@@ -640,14 +640,6 @@ void GPU_remove_baseline(T* d_collection, int nsamps){
 
   }while(abs(mean) > 5e-7 * nsamps);
 
-  thrust::for_each(thrust::device_ptr<T>(d_collection),
-        thrust::device_ptr<T>(d_collection)+nsamps,thrust::placeholders::_1 -= mean);
-
-
-//  float mean = GPU_mean(d_collection, nsamps, 0);
-
-//  thrust::for_each(thrust::device_ptr<T>(d_collection),   thrust::device_ptr<T>(d_collection)+nsamps,thrust::placeholders::_1 -= mean);
-
 }
 
 
@@ -1370,4 +1362,5 @@ template void device_conversion<char,float>(char*, float*, unsigned int, unsigne
 template void device_conversion<unsigned char,float>(unsigned char*, float*, unsigned int, unsigned int, unsigned int);
 template void device_conversion<unsigned int,float>(unsigned int*, float*, unsigned int, unsigned int, unsigned int);
 template void device_conversion<unsigned char, double>(unsigned char*, double*, unsigned int, unsigned int, unsigned int);
+template void device_conversion<float, float>(float*, float*, unsigned int, unsigned int, unsigned int);
 
