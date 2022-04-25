@@ -26,6 +26,12 @@ NVCC_FFA_COMP_FLAGS =
 NVCCFLAGS  = ${UCFLAGS} ${OPTIMISE} ${NVCC_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
 NVCCFLAGS_FFA  = ${UCFLAGS} ${OPTIMISE} ${NVCC_FFA_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
 CFLAGS    = ${UCFLAGS} -fPIC ${OPTIMISE} ${DEBUG}
+#Hercules 2 Cluster
+ARCH      =  -gencode arch=compute_75,code=[sm_75,compute_75] \
+#Ozstar and Apuse Cluster
+             -gencode arch=compute_60,code=[sm_60,compute_60] \
+			 -gencode arch=compute_62,code=[sm_62,compute_62] \
+			 -gencode arch=compute_61,code=[sm_61,compute_61] 
 
 OBJECTS   = ${OBJ_DIR}/kernels.o
 EXE_FILES = ${BIN_DIR}/circular_orbit_template_bank_peasoup #${BIN_DIR}/resampling_test ${BIN_DIR}/harmonic_sum_test
@@ -33,40 +39,40 @@ EXE_FILES = ${BIN_DIR}/circular_orbit_template_bank_peasoup #${BIN_DIR}/resampli
 all: directories ${OBJECTS} ${EXE_FILES}
 
 ${OBJ_DIR}/kernels.o: ${SRC_DIR}/kernels.cu
-	${NVCC} -c ${NVCCFLAGS} ${INCLUDE} $<  -o $@
+	${NVCC} ${ARCH} -c ${NVCCFLAGS} ${INCLUDE} $<  -o $@
 
 ${BIN_DIR}/circular_orbit_template_bank_peasoup: ${SRC_DIR}/pipeline_multi.cu ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/ffaster: ${SRC_DIR}/ffa_pipeline.cu ${OBJECTS}
-	${NVCC} ${NVCCFLAGS_FFA} ${INCLUDE} ${FFASTER_INCLUDES} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS_FFA} ${INCLUDE} ${FFASTER_INCLUDES} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/harmonic_sum_test: ${SRC_DIR}/harmonic_sum_test.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/resampling_test: ${SRC_DIR}/resampling_test.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/specform_test: ${SRC_DIR}/specform_test.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/coincidencer: ${SRC_DIR}/coincidencer.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/accmap: ${SRC_DIR}/accmap.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/rednoise: ${SRC_DIR}/rednoise_test.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/hcfft: ${SRC_DIR}/hcfft.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/folder_test: ${SRC_DIR}/folder_test.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/dedisp_test: ${SRC_DIR}/dedisp_test.cpp ${OBJECTS}
-	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@ 
+	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@ 
 
 directories:
 	@mkdir -p ${BIN_DIR}
