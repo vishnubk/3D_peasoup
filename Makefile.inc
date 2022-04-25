@@ -10,6 +10,8 @@ THRUST_DIR = /usr/local/cuda/
 # dedisp setup
 DEDISP_DIR = /usr/local/
 
+GPU_ARCH_FLAG = -arch=sm_75
+
 GCC       = gcc
 GXX       = g++
 AR        = ar

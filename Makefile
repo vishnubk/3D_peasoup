@@ -21,9 +21,9 @@ FFASTER_INCLUDES = -I${FFASTER_DIR}/include -L${FFASTER_DIR}/lib -lffaster
 
 # compiler flags
 # --compiler-options -Wall
-NVCC_COMP_FLAGS = --gpu-architecture sm_75 
+NVCC_COMP_FLAGS =  
 NVCC_FFA_COMP_FLAGS = 
-NVCCFLAGS  = ${UCFLAGS} ${OPTIMISE} ${NVCC_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
+NVCCFLAGS  = ${UCFLAGS} ${OPTIMISE} ${NVCC_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler $(GPU_ARCH_FLAG) ${DEBUG}
 NVCCFLAGS_FFA  = ${UCFLAGS} ${OPTIMISE} ${NVCC_FFA_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
 CFLAGS    = ${UCFLAGS} -fPIC ${OPTIMISE} ${DEBUG}
 #Hercules 2, Ozstar and Apuse Cluster
