@@ -21,7 +21,7 @@ FFASTER_INCLUDES = -I${FFASTER_DIR}/include -L${FFASTER_DIR}/lib -lffaster
 
 # compiler flags
 # --compiler-options -Wall
-NVCC_COMP_FLAGS = 
+NVCC_COMP_FLAGS = --gpu-architecture sm_75 
 NVCC_FFA_COMP_FLAGS = 
 NVCCFLAGS  = ${UCFLAGS} ${OPTIMISE} ${NVCC_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
 NVCCFLAGS_FFA  = ${UCFLAGS} ${OPTIMISE} ${NVCC_FFA_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
@@ -38,40 +38,40 @@ EXE_FILES = ${BIN_DIR}/circular_orbit_template_bank_peasoup #${BIN_DIR}/resampli
 all: directories ${OBJECTS} ${EXE_FILES}
 
 ${OBJ_DIR}/kernels.o: ${SRC_DIR}/kernels.cu
-	${NVCC} ${ARCH} -c ${NVCCFLAGS} ${INCLUDE} $<  -o $@
+	${NVCC} -c ${NVCCFLAGS} ${INCLUDE} $<  -o $@
 
 ${BIN_DIR}/circular_orbit_template_bank_peasoup: ${SRC_DIR}/pipeline_multi.cu ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/ffaster: ${SRC_DIR}/ffa_pipeline.cu ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS_FFA} ${INCLUDE} ${FFASTER_INCLUDES} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS_FFA} ${INCLUDE} ${FFASTER_INCLUDES} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/harmonic_sum_test: ${SRC_DIR}/harmonic_sum_test.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/resampling_test: ${SRC_DIR}/resampling_test.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/specform_test: ${SRC_DIR}/specform_test.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/coincidencer: ${SRC_DIR}/coincidencer.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/accmap: ${SRC_DIR}/accmap.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/rednoise: ${SRC_DIR}/rednoise_test.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/hcfft: ${SRC_DIR}/hcfft.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/folder_test: ${SRC_DIR}/folder_test.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/dedisp_test: ${SRC_DIR}/dedisp_test.cpp ${OBJECTS}
-	${NVCC} ${ARCH} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@ 
+	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@ 
 
 directories:
 	@mkdir -p ${BIN_DIR}
