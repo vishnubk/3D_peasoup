@@ -26,12 +26,11 @@ NVCC_FFA_COMP_FLAGS =
 NVCCFLAGS  = ${UCFLAGS} ${OPTIMISE} ${NVCC_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
 NVCCFLAGS_FFA  = ${UCFLAGS} ${OPTIMISE} ${NVCC_FFA_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
 CFLAGS    = ${UCFLAGS} -fPIC ${OPTIMISE} ${DEBUG}
-#Hercules 2 Cluster
+#Hercules 2, Ozstar and Apuse Cluster
 ARCH      =  -gencode arch=compute_75,code=[sm_75,compute_75] \
-#Ozstar and Apuse Cluster
-             -gencode arch=compute_60,code=[sm_60,compute_60] \
-			 -gencode arch=compute_62,code=[sm_62,compute_62] \
-			 -gencode arch=compute_61,code=[sm_61,compute_61] 
+-gencode arch=compute_60,code=[sm_60,compute_60] \
+-gencode arch=compute_62,code=[sm_62,compute_62] \
+-gencode arch=compute_61,code=[sm_61,compute_61] 
 
 OBJECTS   = ${OBJ_DIR}/kernels.o
 EXE_FILES = ${BIN_DIR}/circular_orbit_template_bank_peasoup #${BIN_DIR}/resampling_test ${BIN_DIR}/harmonic_sum_test
