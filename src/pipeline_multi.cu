@@ -173,7 +173,6 @@ public:
           std::cout << "Transferring " << tim.get_nsamps() << " samples" << std::endl;
       }
 
-      //Utils::dump_host_buffer<float>(tim.get_data(), tim.get_nsamps(), "raw_timeseries_before_baseline_removal_host.dump");
 
       d_tim.copy_from_host(tim);
       if (args.verbose) std::cout << "Copy from host complete\n";
@@ -181,16 +180,8 @@ public:
       if (args.verbose) std::cout << "Removing baseline\n";
       d_tim.remove_baseline(std::min(tim.get_nsamps(), d_tim.get_nsamps()));
       if (args.verbose) std::cout << "Baseline removed\n";
-      //Utils::dump_device_buffer<float>(d_tim.get_data(), d_tim.get_nsamps(), "raw_timeseries_after_baseline_removal.dump");
 
       
-      //timers["rednoise"].start()
-
-      // Mean Padding
-      //if (padding){
-	  //  padding_mean = stats::mean<float>(d_tim.get_data(),trials.get_nsamps());
-	  //  d_tim.fill(trials.get_nsamps(),d_tim.get_nsamps(),padding_mean);
-      // }
 
       // Zero Padding 
       if (padding){
@@ -200,7 +191,6 @@ public:
               } else {
                   d_tim.fill(trials.get_nsamps(), d_tim.get_nsamps(), 0);
               }
-          //padding_mean = stats::mean<float>(d_tim.get_data(),trials.get_nsamps());
         }
 
       if (args.verbose)
@@ -255,14 +245,12 @@ public:
              if (args.verbose)
 
                  std::cout << "Resampling to "<< angular_velocity[jj] <<  " " << tau[jj] << " " << phi[jj] << std::endl;
-                 //std::cout << "Size argument before resampling is: "<< size << std::endl;
 
              resampler.resampler_3D_circular_orbit_large_timeseries(d_tim,d_tim_resampled,size,angular_velocity[jj],tau[jj],phi[jj]);
 
              if (args.verbose)
               std::cout << "Execute forward FFT" << std::endl;
             r2cfft.execute(d_tim_resampled.get_data(),d_fseries.get_data());
-            //r2cfft.execute(d_tim.get_data(),d_fseries.get_data());
 
             if (args.verbose)
               std::cout << "Form interpolated power spectrum" << std::endl;
@@ -289,7 +277,6 @@ public:
 
              if (args.verbose)
              std::cout << "Distilling template bank trials" << std::endl;
-            //dm_trial_cands.append(current_template_trial_cands.cands);
             dm_trial_cands.append(template_bank_best.distill_template_bank(current_template_trial_cands.cands));
 
     }
@@ -299,8 +286,6 @@ public:
     if (args.zapfilename!="")
       delete bzap;
    
-//    if (args.templatefilename!="")
-//      delete templates;
  
     if (args.verbose)
       std::cout << "DM processing took " << pass_timer.getTime() << " seconds"<< std::endl;
@@ -455,9 +440,6 @@ int main(int argc, char **argv)
     POP_NVTX_RANGE
     timers["dedispersion"].stop();
 
-    //Write out a dedispersed time series file from the dedispersion tials
-    //  unsigned int* data_ptr = trials[0].get_data();
-    //  Utils::dump_host_buffer<unsigned int>(data_ptr,trials.get_nsamps(),"dedispersed_timeseries_new");
 
     if (args.progress_bar)
       printf("Complete (execution time %.2f s)\n",timers["dedispersion"].getTime());
