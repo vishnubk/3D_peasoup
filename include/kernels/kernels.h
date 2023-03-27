@@ -138,9 +138,13 @@ void device_timeseries_offset(float * d_idata, float * d_resamp_offset,
 
 void device_modulate_time_series_length(float * d_resamp_offset, unsigned int  nsamples_unpadded, unsigned int * new_length);
 
+void device_new_modulate_time_series_length(float * d_resamp_offset, unsigned int  nsamples_unpadded, unsigned int * new_length);
 
 void device_resample_circular_binary(float * d_idata, float * d_odata, float * d_resamp_offset,
                      unsigned int new_length, unsigned int max_threads, unsigned int max_blocks);
+
+void device_resampler_circular_binary_large_timeseries(float * d_idata, float * d_odata, double omega, double tau, double phi, double zero_offset, double inverse_tsamp, double tsamp, unsigned int size, unsigned int max_threads, unsigned int max_blocks);
+
 
 int device_find_peaks(int n,
 		      int start_index,
@@ -301,6 +305,11 @@ template <typename T>
 void GPU_fill(T* start,
 	      T* end,
 	      T value);
+
+template <typename T>
+void GPU_remove_baseline(T* d_collection,
+          int nsamps);
+
 
 //----------coincidencer-----------//
 

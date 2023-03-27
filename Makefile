@@ -21,21 +21,26 @@ FFASTER_INCLUDES = -I${FFASTER_DIR}/include -L${FFASTER_DIR}/lib -lffaster
 
 # compiler flags
 # --compiler-options -Wall
-NVCC_COMP_FLAGS = 
+NVCC_COMP_FLAGS = $(GPU_ARCH_FLAG) 
 NVCC_FFA_COMP_FLAGS = 
 NVCCFLAGS  = ${UCFLAGS} ${OPTIMISE} ${NVCC_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
 NVCCFLAGS_FFA  = ${UCFLAGS} ${OPTIMISE} ${NVCC_FFA_COMP_FLAGS} -lineinfo --machine 64 -Xcompiler ${DEBUG}
 CFLAGS    = ${UCFLAGS} -fPIC ${OPTIMISE} ${DEBUG}
+#Hercules 2, Ozstar and Apuse Cluster
+ARCH      =  -gencode arch=compute_75,code=[sm_75,compute_75] \
+-gencode arch=compute_60,code=[sm_60,compute_60] \
+-gencode arch=compute_62,code=[sm_62,compute_62] \
+-gencode arch=compute_61,code=[sm_61,compute_61] 
 
 OBJECTS   = ${OBJ_DIR}/kernels.o
-EXE_FILES = ${BIN_DIR}/peasoup #${BIN_DIR}/resampling_test ${BIN_DIR}/harmonic_sum_test
+EXE_FILES = ${BIN_DIR}/circular_orbit_template_bank_peasoup #${BIN_DIR}/resampling_test ${BIN_DIR}/harmonic_sum_test
 
 all: directories ${OBJECTS} ${EXE_FILES}
 
 ${OBJ_DIR}/kernels.o: ${SRC_DIR}/kernels.cu
 	${NVCC} -c ${NVCCFLAGS} ${INCLUDE} $<  -o $@
 
-${BIN_DIR}/peasoup: ${SRC_DIR}/pipeline_multi.cu ${OBJECTS}
+${BIN_DIR}/circular_orbit_template_bank_peasoup: ${SRC_DIR}/pipeline_multi.cu ${OBJECTS}
 	${NVCC} ${NVCCFLAGS} ${INCLUDE} ${LIBS} $^ -o $@
 
 ${BIN_DIR}/ffaster: ${SRC_DIR}/ffa_pipeline.cu ${OBJECTS}
@@ -76,4 +81,4 @@ clean:
 	@rm -rf ${OBJ_DIR}/*
 
 install: all
-	cp $(BIN_DIR)/peasoup $(INSTALL_DIR)/bin
+	cp $(BIN_DIR)/circular_orbit_template_bank_peasoup $(INSTALL_DIR)/bin

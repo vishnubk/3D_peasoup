@@ -76,7 +76,7 @@ protected:
     :keep_related(keep_related){}
 
 public:      
-  std::vector<Candidate_template_bank> distill(std::vector<Candidate_template_bank>& cands)
+  std::vector<Candidate_template_bank> distill_template_bank(std::vector<Candidate_template_bank>& cands)
   {
     size = cands.size();
     unique.resize(size);
@@ -104,6 +104,7 @@ public:
     }
     std::vector<Candidate_template_bank> new_cands;
     new_cands.reserve(count);
+    //printf("Size in base distiller is: %d \n" ,size); 
     for (ii=0;ii<size;ii++){
       if (unique[ii])
         new_cands.push_back(cands[ii]);
