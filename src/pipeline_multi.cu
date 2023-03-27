@@ -506,7 +506,7 @@ if (args.templatefilename==""){
   dm_cands.cands.resize(new_size);
 
   CandidateFileWriter_template_bank cand_files(args.outdir);
-  cand_files.write_binary(dm_cands.cands,"candidates_template_bank.peasoup");
+  //cand_files.write_binary(dm_cands.cands,"candidates_template_bank.peasoup");
   OutputFileWriter_template_bank stats;
   stats.add_misc_info();
   stats.add_header(filename);
